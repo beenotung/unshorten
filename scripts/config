@@ -1,4 +1,4 @@
 user=node
-host=unshorten.cc
+host=unshorten.respects.cc
 root_dir=/home/node/workspace/github.com/beenotung/unshorten
 pm2_name="unshorten"
