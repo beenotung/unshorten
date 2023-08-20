@@ -1,96 +1,132 @@
-import { Link } from '../components/router.js'
+import { Link, renderRedirect } from '../components/router.js'
 import { o } from '../jsx/jsx.js'
 import { prerender } from '../jsx/html.js'
-import Comment from '../components/comment.js'
 import SourceCode from '../components/source-code.js'
+import { ResolvedPageRoue, Routes, StaticPageRoute } from '../routes.js'
+import { config, title } from '../../config.js'
+import { DynamicContext } from '../context.js'
+import { renderError } from '../components/error.js'
+import sanitize from 'sanitize-html'
+import { trackingParamKeys } from '../untrack.js'
+import { format_byte } from '@beenotung/tslib/format.js'
+import { formatSize } from '../format.js'
 
-// Calling <Component/> will transform the JSX into AST for each rendering.
-// You can reuse a pre-compute AST like `let component = <Component/>`.
-
-// If the expression is static (not depending on the render Context),
-// you don't have to wrap it by a function at all.
-
-let content = (
+let home = prerender(
   <div id="home">
-    <h1>Home Page</h1>
-    <p>
-      This website is a{' '}
-      <b>
-        hybrid <abbr title="Static Side Generation">SSG</abbr> and{' '}
-        <abbr title="Server-Side Rendered">SSR</abbr> Realtime Web App
-      </b>{' '}
-      (also known as <b>SSR-SPA</b>).
-    </p>
-    <p>
-      When the browser load this url, the server responses complete html content
-      to the GET request. This allows the browser to perform meaningful paint as
-      soon as possible. And it's ideal for SEO.
-    </p>
-    <p>
-      Then the browser establishes websocket connection to receive realtime
-      update from the server.
-    </p>
-    <p>
-      The app logic is executed on the server, and the app state is kept on the
-      server. (The input values are kept in the DOM before form submission.)
-    </p>
-    <p>
-      As opposite to ts-liveview v1, the server does not maintain virtual dom
-      for diff-patch. The UI is updated using query selector and AST/JSX.
-      ts-liveview employs hybrid approach: the developer can specify the initial
-      layout declaratively and applying event-driven partial layout update. This
-      is like a crossover of <a href="https://reactjs.org/">React</a> and{' '}
-      <a href="https://jquery.com/">jQuery</a>, taking a good-side of both
-      worlds, balancing the developer experience (DX) and runtime efficient,
-      which improve the user-experience (UX).
-    </p>
-
-    <h2>ts-liveview code snippet</h2>
-    <p>You can either write in JSX or AST.</p>
-    {Comment(`using table to align 3 code blocks with the same width`)}
-    <table>
-      <tbody>
-        <tr>
-          <td>
-            <fieldset>
-              <legend>JSX Example</legend>
-              <code class="inline-code">{`<a href='#'>hash link</a>`}</code>
-            </fieldset>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <fieldset>
-              <legend>AST Example</legend>
-              <code class="inline-code">{`['a', { href: '#' }, ['hash link']]`}</code>
-            </fieldset>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <fieldset>
-              <legend>HTML output</legend>
-              <a href="#">hash link</a>
-            </fieldset>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <p>
-      Try some reactive demo:{' '}
-      <a href="https://liveviews.cc/thermostat" target="_blank">
-        Thermostat
-      </a>
-      ,{' '}
-      <a href="https://liveviews.cc/form" target="_blank">
-        Form Demo
-      </a>
-    </p>
+    <h1>Reveal Shorten URL</h1>
+    <form method="get" action="/reveal">
+      <input name="link" placeholder="Paste shorten url here..." />
+      <input type="submit" value="Reveal" />
+    </form>
     <SourceCode page="home.tsx" />
-  </div>
+  </div>,
 )
 
-// And it can be pre-rendered into html as well
-let Home = prerender(content)
+function Reveal(attrs: { link: string; res: Response }) {
+  let { link, res } = attrs
+  let url = new URL(res.url)
+  let removedTrackingParams = trackingParamKeys.filter(key => {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key)
+      return true
+    }
+  })
+  let destination = url.href
+  if (url.searchParams.size > 0) {
+    destination += '?' + url.searchParams
+  }
+  let size = +res.headers.get('content-length')!
+  let server = res.headers.get('server')
+  let poweredBy = res.headers.get('x-powered-by')
+  return (
+    <div id="reveal-page">
+      <h1>Reveal Shorten URL</h1>
+      <form method="get" action="/reveal">
+        <input
+          name="link"
+          placeholder="Paste shorten url here..."
+          value={link}
+        />
+        <input type="submit" value="Reveal" />
+      </form>
+      <p>
+        Destination Link: <a href={destination}>{destination}</a>
+      </p>
+      {removedTrackingParams.length > 0 ? (
+        <p>
+          {removedTrackingParams.length} tracking parameters removed:{' '}
+          {removedTrackingParams.join(', ')}
+        </p>
+      ) : null}
+      <hr />
+      <h2>Technical Details</h2>
+      <p>Media Type: {res.headers.get('content-type') || 'Unknown'}</p>
+      {size ? <p>Content Size: {formatSize(size)}</p> : null}
+      {server ? <p>Server: {res.headers.get('server')}</p> : null}
+      {poweredBy ? <p>Powered by: {res.headers.get('x-powered-by')}</p> : null}
+      <p>Source Link: {link}</p>
+      <p>Original Destination Link: {res.url}</p>
+      <SourceCode page="home.tsx" />
+    </div>
+  )
+}
 
-export default Home
+function resolveReveal(
+  context: DynamicContext,
+): ResolvedPageRoue | StaticPageRoute {
+  const link = context.routerMatch?.search
+    ? new URLSearchParams(context.routerMatch?.search).get('link')
+    : null
+  let safeLink = link ? sanitize(link) : null
+  let defaultTitle = 'Reveal Shorten URL'
+  if (!link) {
+    return {
+      title: defaultTitle,
+      description: config.site_description,
+      node: renderRedirect('/'),
+    }
+  }
+  if (!link.startsWith('http://') && !link.startsWith('https://')) {
+    return {
+      title: defaultTitle,
+      description: config.site_description,
+      node: renderError(
+        'Invalid link, it should starts with http:// or https://',
+        context,
+      ),
+    }
+  }
+  return fetch(link)
+    .then(res => {
+      return {
+        title: 'Reveal ' + safeLink,
+        description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
+        node: <Reveal link={link} res={res} />,
+      }
+    })
+    .catch(err => {
+      return {
+        title: defaultTitle,
+        description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
+        node: renderError(
+          `Failed to resolve destination of ${safeLink}`,
+          context,
+        ),
+      }
+    })
+}
+
+let routes: Routes = {
+  '/': {
+    title: title('Home'),
+    description: config.site_description,
+    menuText: 'Home',
+    menuUrl: '/',
+    node: home,
+  },
+  '/reveal': {
+    resolve: resolveReveal,
+  },
+}
+
+export default routes

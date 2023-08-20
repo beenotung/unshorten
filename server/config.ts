@@ -60,8 +60,9 @@ export let config = {
   require_https: !behind_proxy && production,
   behind_proxy,
   cookie_secret: env.COOKIE_SECRET,
-  site_name: 'ts-liveview Demo',
-  site_description: 'Demo website of ts-liveview',
+  site_name: 'UnShorten URL Revealer with Respects',
+  site_description:
+    'Reveal the destination of shorten url and remove tracking parameters',
   setup_robots_txt: false,
   serverOptions,
   epoch,
