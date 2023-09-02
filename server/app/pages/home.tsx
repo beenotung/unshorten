@@ -56,6 +56,10 @@ let home = prerender(
 function Reveal(attrs: { link: string; res: Response }) {
   let { link, res } = attrs
   let url = new URL(res.url)
+  if (url.href.startsWith('https://r.lihkg.com/link')) {
+    let u = url.searchParams.get('u')
+    if (u) url = new URL(u)
+  }
   let removedTrackingParams: Record<string, string[]> = {}
   removeTrackingParams({ removedTrackingParams, url }, trackingParamKeys)
   if (url.hostname.indexOf('facebook')) {
@@ -138,7 +142,7 @@ function Reveal(attrs: { link: string; res: Response }) {
       {server ? <Field label="Server" value={server} /> : null}
       {poweredBy ? <Field label="Powered by" value={poweredBy} /> : null}
       <Field label="Source Link" value={link} />
-      {res.url != url.href ? (
+      {res.url != url.href && res.url != link ? (
         <Field label="Original Destination Link" value={res.url} />
       ) : null}
       <Field label="Resolved Destination Link" value={url.href} />
