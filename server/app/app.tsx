@@ -57,7 +57,10 @@ let scripts = config.development ? (
 
 let brand = (
   <div style="color: darkblue; font-weight: bold">
-    <span style="font-size: 1.7rem" class="text-no-wrap">
+    <span
+      style="font-size: 1.7rem"
+      // class="text-no-wrap"
+    >
       {config.site_name}
     </span>
   </div>
