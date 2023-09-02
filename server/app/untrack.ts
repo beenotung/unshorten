@@ -10,6 +10,8 @@ export let trackingParamKeys = [
   'gclid',
 ]
 
+export let facebookTrackParamKeys = ['extid', 'mibextid', 'ref']
+
 export function removeTrackingParams(params: URLSearchParams) {
   let removeCount = 0
   for (let key of trackingParamKeys) {
