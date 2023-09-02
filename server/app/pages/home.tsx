@@ -66,6 +66,7 @@ function Reveal(attrs: { link: string; res: Response }) {
     removeTrackingParams({ removedTrackingParams, url }, facebookTrackParamKeys)
   }
   let removedTrackingParamEntries = Object.entries(removedTrackingParams)
+  let urlSearchParamEntries = Array.from(url.searchParams.entries())
   let short_url = url.href.replace(url.search, '').replace(/\/$/, '')
   let size = +res.headers.get('content-length')!
   let server = res.headers.get('server')
@@ -90,7 +91,7 @@ function Reveal(attrs: { link: string; res: Response }) {
           </a>
         }
       />
-      {url.searchParams.size > 0 ? (
+      {urlSearchParamEntries.length > 0 ? (
         <div>
           <div class="label">Search params in the link: </div>
           <table class="search-params">
@@ -102,7 +103,7 @@ function Reveal(attrs: { link: string; res: Response }) {
             </thead>
             <tbody>
               {[
-                Array.from(url.searchParams.entries(), ([key, value]) => (
+                Array.from(urlSearchParamEntries, ([key, value]) => (
                   <tr>
                     <td>{key}</td>
                     <td class="long-line">{value}</td>
