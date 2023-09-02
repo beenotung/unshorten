@@ -1,4 +1,4 @@
-import { Link, renderRedirect } from '../components/router.js'
+import { renderRedirect } from '../components/router.js'
 import { o } from '../jsx/jsx.js'
 import { prerender } from '../jsx/html.js'
 import SourceCode from '../components/source-code.js'
@@ -7,9 +7,40 @@ import { config, title } from '../../config.js'
 import { DynamicContext } from '../context.js'
 import { renderError } from '../components/error.js'
 import sanitize from 'sanitize-html'
-import { trackingParamKeys } from '../untrack.js'
-import { format_byte } from '@beenotung/tslib/format.js'
+import {
+  facebookTrackParamKeys,
+  removeTrackingParams,
+  trackingParamKeys,
+} from '../untrack.js'
 import { formatSize } from '../format.js'
+import { Style } from '../components/style.js'
+import { new_counter } from '@beenotung/tslib/counter.js'
+import { mapArray } from '../components/fragment.js'
+
+let style = Style(/* css */ `
+table.search-params {
+  border-collapse: collapse;
+  margin-top: 0.25rem;
+  margin-inline-start: 0.25rem;
+}
+table.search-params th,
+table.search-params td {
+  border: 1px solid;
+  padding: 0.25rem;
+}
+table.search-params th {
+  text-align: start;
+}
+.long-line {
+  word-wrap: anywhere;
+}
+.inline-block {
+  display: inline-block;
+}
+.field-label {
+  font-weight: 600;
+}
+`)
 
 let home = prerender(
   <div id="home">
@@ -25,22 +56,20 @@ let home = prerender(
 function Reveal(attrs: { link: string; res: Response }) {
   let { link, res } = attrs
   let url = new URL(res.url)
-  let removedTrackingParams = trackingParamKeys.filter(key => {
-    if (url.searchParams.has(key)) {
-      url.searchParams.delete(key)
-      return true
-    }
-  })
-  let destination = url.href
-  if (url.searchParams.size > 0) {
-    destination += '?' + url.searchParams
+  let removedTrackingParams: Record<string, string[]> = {}
+  removeTrackingParams({ removedTrackingParams, url }, trackingParamKeys)
+  if (url.hostname.indexOf('facebook')) {
+    removeTrackingParams({ removedTrackingParams, url }, facebookTrackParamKeys)
   }
+  let removedTrackingParamEntries = Object.entries(removedTrackingParams)
+  let short_url = url.href.replace(url.search, '').replace(/\/$/, '')
   let size = +res.headers.get('content-length')!
   let server = res.headers.get('server')
   let poweredBy = res.headers.get('x-powered-by')
   return (
     <div id="reveal-page">
       <h1>Reveal Shorten URL</h1>
+      {style}
       <form method="get" action="/reveal">
         <input
           name="link"
@@ -49,25 +78,88 @@ function Reveal(attrs: { link: string; res: Response }) {
         />
         <input type="submit" value="Reveal" />
       </form>
-      <p>
-        Destination Link: <a href={destination}>{destination}</a>
-      </p>
-      {removedTrackingParams.length > 0 ? (
-        <p>
-          {removedTrackingParams.length} tracking parameters removed:{' '}
-          {removedTrackingParams.join(', ')}
-        </p>
+      <Field
+        label="Destination Link"
+        value={
+          <a href={url.href} rel="nofollow">
+            {short_url}
+          </a>
+        }
+      />
+      {url.searchParams.size > 0 ? (
+        <div>
+          <div class="label">Search params in the link: </div>
+          <table class="search-params">
+            <thead>
+              <tr>
+                <th>Param</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                Array.from(url.searchParams.entries(), ([key, value]) => (
+                  <tr>
+                    <td>{key}</td>
+                    <td class="long-line">{value}</td>
+                  </tr>
+                )),
+              ]}
+            </tbody>
+          </table>
+        </div>
       ) : null}
+      {removedTrackingParamEntries.length > 0 ? (
+        <Field
+          label={removedTrackingParams.length + ' tracking params removed'}
+          value={mapArray(
+            removedTrackingParamEntries,
+            ([key, values]) => (
+              <span
+                title={values.map(value => `${key}=${value}`).join('&')}
+                data-key={key}
+                onclick="this.textContent=this.textContent==this.title?this.dataset.key:this.title"
+              >
+                {key}
+              </span>
+            ),
+            ', ',
+          )}
+        />
+      ) : null}
+
       <hr />
       <h2>Technical Details</h2>
-      <p>Media Type: {res.headers.get('content-type') || 'Unknown'}</p>
-      {size ? <p>Content Size: {formatSize(size)}</p> : null}
-      {server ? <p>Server: {res.headers.get('server')}</p> : null}
-      {poweredBy ? <p>Powered by: {res.headers.get('x-powered-by')}</p> : null}
-      <p>Source Link: {link}</p>
-      <p>Original Destination Link: {res.url}</p>
+      <Field
+        label="Media Type"
+        value={res.headers.get('content-type') || 'Unknown'}
+      />
+      {size ? <Field label="Content Size" value={formatSize(size)} /> : null}
+      {server ? <Field label="Server" value={server} /> : null}
+      {poweredBy ? <Field label="Powered by" value={poweredBy} /> : null}
+      <Field label="Source Link" value={link} />
+      {res.url != url.href ? (
+        <Field label="Original Destination Link" value={res.url} />
+      ) : null}
+      <Field label="Resolved Destination Link" value={url.href} />
       <SourceCode page="home.tsx" />
     </div>
+  )
+}
+
+let fieldCounter = new_counter()
+
+function Field(attrs: { label: string; value: any }) {
+  let id = 'field-' + fieldCounter.next()
+  return (
+    <p class="long-line">
+      <label class="field-label" for={id}>
+        {attrs.label}:{' '}
+      </label>
+      <span class="inline-block" id={id}>
+        {attrs.value}
+      </span>
+    </p>
   )
 }
 
