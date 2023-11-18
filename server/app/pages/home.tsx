@@ -116,7 +116,9 @@ function Reveal(attrs: { link: string; res: Response }) {
       ) : null}
       {removedTrackingParamEntries.length > 0 ? (
         <Field
-          label={removedTrackingParams.length + ' tracking params removed'}
+          label={
+            removedTrackingParamEntries.length + ' tracking params removed'
+          }
           value={mapArray(
             removedTrackingParamEntries,
             ([key, values]) => (
