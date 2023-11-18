@@ -10,7 +10,7 @@ export let trackingParamKeys = [
   'gclid',
 ]
 
-export let facebookTrackParamKeys = ['extid', 'mibextid', 'ref']
+export let facebookTrackParamKeys = ['extid', 'mibextid', 'ref', 'acontext']
 
 export function removeTrackingParams(
   context: {
