@@ -14,7 +14,7 @@ export function renderIndexTemplate(
   stream: HTMLStream,
   options: IndexOptions,
 ): void {
-  stream.write(/* html */ `<!DOCTYPE html>
+  stream.write(/* html */ `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -43,6 +43,9 @@ export function renderIndexTemplate(
       interactive when javascript is enabled.
     </div>
     <style>
+      body {
+        padding-bottom: 2.5rem;
+      }
       #noscript {
         display: none;
       }
@@ -54,6 +57,11 @@ export function renderIndexTemplate(
         background: white;
         border: 1px solid black;
         border-radius: 0.2em;
+        z-index: 1;
+      }
+      #ws_status:hover {
+        opacity: 0.2;
+        user-select: none;
       }
       abbr[title]:after {
         content: ' (' attr(title) ')';

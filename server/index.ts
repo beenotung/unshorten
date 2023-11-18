@@ -1,9 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express'
-import spdy from 'spdy-fixes'
+import http from 'http'
 import { WebSocketServer } from 'ws'
 import { config } from './config.js'
 import { join } from 'path'
-import compression from 'compression'
 import { debugLog } from './debug.js'
 import { listenWSSConnection } from './ws/wss-lite.js'
 import { attachRoutes, onWsMessage } from './app/app.js'
@@ -12,14 +11,14 @@ import open from 'open'
 import { cookieMiddleware } from './app/cookie.js'
 import { listenWSSCookie } from './app/cookie.js'
 import { print } from 'listening-on'
-import { storeRequestLog } from '../db/store.js'
 import { HttpError } from './http-error.js'
+import { logRequest } from './app/log.js'
 
 const log = debugLog('index.ts')
 log.enabled = true
 
 const app = express()
-const server = spdy.createServer(config.serverOptions, app)
+const server = http.createServer(app)
 const wss = new WebSocketServer({ server })
 listenWSSCookie(wss)
 listenWSSConnection({
@@ -36,17 +35,10 @@ listenWSSConnection({
 })
 
 app.use((req, res, next) => {
-  storeRequestLog({
-    method: req.method,
-    url: req.url,
-    user_agent: req.headers['user-agent'] || null,
-  })
+  logRequest(req, req.method, req.url)
   next()
 })
 
-if (!config.behind_proxy) {
-  app.use(compression())
-}
 if (config.development) {
   app.use('/js', express.static(join('dist', 'client')))
 }
@@ -67,10 +59,9 @@ app.use((error: HttpError, req: Request, res: Response, next: NextFunction) => {
 })
 
 const port = config.port
-const protocol = config.serverOptions.key ? 'https' : 'http'
 server.listen(port, () => {
-  print({ port, protocol })
+  print(port)
   if (config.auto_open) {
-    open(`${protocol}://localhost:${port}`)
+    open(`http://localhost:${port}`)
   }
 })

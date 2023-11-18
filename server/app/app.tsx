@@ -6,6 +6,7 @@ import type { Element, Node } from './jsx/types'
 import {
   escapeHTMLAttributeValue,
   escapeHTMLTextContent,
+  unquote,
   writeNode,
 } from './jsx/html.js'
 import { sendHTMLHeader } from './express.js'
@@ -28,6 +29,7 @@ import { getWsCookies } from './cookie.js'
 import { PickLanguage } from './components/ui-language.js'
 import Navbar from './components/navbar.js'
 import Sidebar from './components/sidebar.js'
+import { logRequest } from './log.js'
 
 if (config.development) {
   scanTemplateDir('template')
@@ -39,8 +41,8 @@ function renderTemplate(
 ) {
   const app = options.app
   renderIndexTemplate(stream, {
-    title: escapeHTMLAttributeValue(options.title),
-    description: escapeHTMLAttributeValue(options.description),
+    title: escapeHTMLTextContent(options.title),
+    description: unquote(escapeHTMLAttributeValue(options.description)),
     app:
       typeof app == 'string' ? app : stream => writeNode(stream, app, context),
   })
@@ -263,11 +265,13 @@ export let onWsMessage: OnWsMessage = (event, ws, _wss) => {
         ),
       )
     }
+    logRequest(ws.request, 'ws', url)
   } else if (event[0][0] === '/') {
     event = event as ClientRouteMessage
     eventType = 'route'
     url = event[0]
     args = event.slice(1)
+    logRequest(ws.request, 'ws', url)
   } else {
     console.log('unknown type of ws message:', event)
     return

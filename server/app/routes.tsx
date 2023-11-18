@@ -8,7 +8,7 @@ import type { Node } from './jsx/types'
 import About, { License } from './pages/about.js'
 import UserAgents from './pages/user-agents.js'
 import Home from './pages/home.js'
-import NotMatch from './pages/not-match.js'
+import NotFoundPageRoute from './pages/not-found.js'
 import { then } from '@beenotung/tslib/result.js'
 import type { MenuRoute } from './components/menu'
 
@@ -107,18 +107,11 @@ Object.entries(redirectDict).forEach(([url, href]) =>
   }),
 )
 
-export let NotFoundPage: PageRoute = {
-  title: title('Page Not Found'),
-  description: 'This page is not found. Probably due to outdated menu.',
-  node: NotMatch,
-  status: 404,
-}
-
 export function matchRoute(
   context: DynamicContext,
 ): PageRouteMatch | Promise<PageRouteMatch> {
   let match = pageRouter.route(context.url)
-  let route: PageRoute = match ? match.value : NotFoundPage
+  let route: PageRoute = match ? match.value : NotFoundPageRoute
   if (route.streaming === undefined) {
     route.streaming = StreamingByDefault
   }
