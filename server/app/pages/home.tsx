@@ -138,6 +138,10 @@ function Reveal(attrs: { link: string; res: Response }) {
       <hr />
       <h2>Technical Details</h2>
       <Field
+        label="Response Status"
+        value={`${res.status} (${res.statusText})`}
+      />
+      <Field
         label="Media Type"
         value={res.headers.get('content-type') || 'Unknown'}
       />
