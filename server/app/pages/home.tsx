@@ -79,7 +79,7 @@ function Reveal(attrs: { link: string; res: Response }) {
         <input
           name="link"
           placeholder="Paste shorten url here..."
-          value={decodeURI( link)}
+          value={decodeURI(link)}
         />
         <input type="submit" value="Reveal" />
       </form>
