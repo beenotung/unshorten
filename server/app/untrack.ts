@@ -8,6 +8,8 @@ export let trackingParamKeys = [
   // reference: https://www.karooya.com/blog/list-of-all-valuetrack-parameters-in-google-adwords/
   'gad',
   'gclid',
+  // facebook tracking parameters
+  'fbclid',
 ]
 
 export let facebookTrackParamKeys = ['extid', 'mibextid', 'ref', 'acontext']
