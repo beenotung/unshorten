@@ -79,15 +79,15 @@ function Reveal(attrs: { link: string; res: Response }) {
         <input
           name="link"
           placeholder="Paste shorten url here..."
-          value={link}
+          value={decodeURI( link)}
         />
         <input type="submit" value="Reveal" />
       </form>
       <Field
         label="Destination Link"
         value={
-          <a href={url.href} rel="nofollow">
-            {short_url}
+          <a href={decodeURI(url.href)} rel="nofollow">
+            {decodeURI(short_url)}
           </a>
         }
       />
@@ -148,7 +148,7 @@ function Reveal(attrs: { link: string; res: Response }) {
       {res.url != url.href && res.url != link ? (
         <Field label="Original Destination Link" value={res.url} />
       ) : null}
-      <Field label="Resolved Destination Link" value={url.href} />
+      <Field label="Resolved Destination Link" value={decodeURI(url.href)} />
       <SourceCode page="home.tsx" />
     </div>
   )
