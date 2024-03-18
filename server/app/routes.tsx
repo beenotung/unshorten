@@ -11,6 +11,7 @@ import Home from './pages/home.js'
 import NotFoundPageRoute from './pages/not-found.js'
 import { then } from '@beenotung/tslib/result.js'
 import type { MenuRoute } from './components/menu'
+import { VNode } from '../../client/jsx/types.js'
 
 let titles: Record<string, string> = {}
 
@@ -32,7 +33,7 @@ export type PageRouteOptions = {
 
 export type StaticPageRoute = {
   title: string
-  node: Node
+  node: Node | VNode
   description: string
   status?: number
 }

@@ -207,7 +207,7 @@ function resolveReveal(
       return {
         title: 'Reveal ' + safeLink,
         description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
-        node: <Reveal link={link} res={res} />,
+        node: <Reveal link={link!} res={res} />,
       }
     })
     .catch(err => {
