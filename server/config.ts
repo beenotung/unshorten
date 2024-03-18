@@ -7,26 +7,21 @@ loadEnv()
 let env = {
   NODE_ENV: 'development',
   PORT: 8100,
-  BEHIND_HTTPS_PROXY: 'false',
-  COOKIE_SECRET: ' ',
+  COOKIE_SECRET: '',
   EPOCH: 1, // to distinct initial run or restart in serve mode
   UPLOAD_DIR: 'uploads',
+}
+applyDefaultEnv()
+
+function applyDefaultEnv() {
+  if (process.env.NODE_ENV === 'production') return
+  env.COOKIE_SECRET ||= process.env.COOKIE_SECRET || cwd()
 }
 
 populateEnv(env, { mode: 'halt' })
 
-let behind_proxy = env.BEHIND_HTTPS_PROXY === 'true'
-
-let production = env.NODE_ENV === 'production' || process.argv[2] === '--prod'
-let development = env.NODE_ENV === 'development' || process.argv[2] === '--dev'
-
-if (production && env.COOKIE_SECRET == ' ') {
-  console.error('Missing COOKIE_SECRET in env')
-  process.exit(1)
-}
-if (env.COOKIE_SECRET == ' ') {
-  env.COOKIE_SECRET = cwd()
-}
+let production = env.NODE_ENV === 'production'
+let development = env.NODE_ENV === 'development'
 
 function fixEpoch() {
   // workaround of initial build twice since esbuild v0.17
@@ -38,12 +33,15 @@ function fixEpoch() {
 
 let epoch = fixEpoch()
 
+export enum LayoutType {
+  navbar = 'navbar',
+  sidebar = 'sidebar',
+}
+
 export let config = {
   production,
   development,
   port: env.PORT,
-  require_https: !behind_proxy && production,
-  behind_proxy,
   cookie_secret: env.COOKIE_SECRET,
   site_name: 'UnShorten URL Revealer with Respects',
   site_description:
@@ -53,6 +51,7 @@ export let config = {
   auto_open: !production && development && epoch === 1,
   upload_dir: env.UPLOAD_DIR,
   client_target: 'es2020',
+  layout_type: LayoutType.navbar,
 }
 
 const titleSuffix = ' | ' + config.site_name

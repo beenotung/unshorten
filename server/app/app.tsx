@@ -1,5 +1,5 @@
 import { o } from './jsx/jsx.js'
-import { scanTemplateDir } from '../template.js'
+import { scanTemplateDir } from '../template-file.js'
 import { NextFunction, Request, Response, Router } from 'express'
 import type { Context, ExpressContext, WsContext } from './context'
 import type { Element, Node } from './jsx/types'
@@ -12,24 +12,31 @@ import {
 import { sendHTMLHeader } from './express.js'
 import { OnWsMessage } from '../ws/wss.js'
 import { dispatchUpdate } from './jsx/dispatch.js'
-import { EarlyTerminate } from './helpers.js'
+import { EarlyTerminate, MessageException } from './helpers.js'
 import { getWSSession } from './session.js'
 import { Flush } from './components/flush.js'
-import { config } from '../config.js'
+import { LayoutType, config } from '../config.js'
 import Stats from './stats.js'
-import { MuteConsole } from './components/script.js'
-import { matchRoute, menuRoutes, PageRouteMatch } from './routes.js'
-import { redirectDict } from './routes.js'
+import { MuteConsole, Script } from './components/script.js'
+import {
+  matchRoute,
+  menuRoutes,
+  PageRouteMatch,
+  redirectDict,
+} from './routes.js'
 import type { ClientMountMessage, ClientRouteMessage } from '../../client/types'
 import { then } from '@beenotung/tslib/result.js'
-import { style } from './app-style.js'
-import { renderIndexTemplate } from '../../template/index.js'
+import { webAppStyle } from './app-style.js'
+import { renderWebTemplate } from '../../template/web.js'
 import { HTMLStream } from './jsx/stream.js'
 import { getWsCookies } from './cookie.js'
 import { PickLanguage } from './components/ui-language.js'
 import Navbar from './components/navbar.js'
 import Sidebar from './components/sidebar.js'
 import { logRequest } from './log.js'
+import { WindowStub } from '../../client/internal.js'
+import { updateRequestSession } from '../../db/request-log.js'
+import { Link } from './components/router.js'
 
 if (config.development) {
   scanTemplateDir('template')
@@ -37,41 +44,61 @@ if (config.development) {
 function renderTemplate(
   stream: HTMLStream,
   context: Context,
-  options: { title: string; description: string; app: Node },
+  route: PageRouteMatch,
 ) {
-  const app = options.app
-  renderIndexTemplate(stream, {
-    title: escapeHTMLTextContent(options.title),
-    description: unquote(escapeHTMLAttributeValue(options.description)),
+  let layout_type = route.layout_type || config.layout_type
+  let App = layouts[layout_type]
+  let app = App(route)
+  let render = route.renderTemplate || renderWebTemplate
+  render(stream, {
+    title: escapeHTMLTextContent(route.title),
+    description: unquote(escapeHTMLAttributeValue(route.description)),
     app:
       typeof app == 'string' ? app : stream => writeNode(stream, app, context),
   })
 }
 
+function CurrentNavigationMetaData(attrs: {}, context: Context) {
+  let js = `_navigation_type_="${context.type}";`
+  if (context.type == 'express') {
+    js += `_navigation_method_="${context.req.method}";`
+  }
+  return Script(js)
+}
+
 let scripts = config.development ? (
-  <script src="/js/index.js" type="module" defer></script>
+  <>
+    <CurrentNavigationMetaData />
+    <script src="/js/index.js" type="module" defer></script>
+  </>
 ) : (
   <>
     {MuteConsole}
+    <CurrentNavigationMetaData />
     <script src="/js/bundle.min.js" type="module" defer></script>
   </>
 )
 
 let brand = (
   <div style="color: darkblue; font-weight: bold">
-    <span
-      style="font-size: 1.7rem"
-      // class="text-no-wrap"
+    <Link
+      style="font-size: 1.7rem; text-decoration: none"
+      class="text-no-wrap"
+      href="/"
     >
       {config.site_name}
-    </span>
+    </Link>
   </div>
 )
 
-export let App = NavbarApp
-// export let App = SidebarApp
+type Layout = (route: PageRouteMatch) => Element
 
-export function NavbarApp(route: PageRouteMatch): Element {
+let layouts: Record<LayoutType, Layout> = {
+  [LayoutType.navbar]: NavbarApp,
+  [LayoutType.sidebar]: SidebarApp,
+}
+
+function NavbarApp(route: PageRouteMatch): Element {
   // you can write the AST direct for more compact wire-format
   return [
     'div.app',
@@ -79,7 +106,8 @@ export function NavbarApp(route: PageRouteMatch): Element {
     [
       // or you can write in JSX for better developer-experience (if you're coming from React)
       <>
-        {style}
+        {webAppStyle}
+        <Flush />
         <Navbar brand={brand} menuRoutes={menuRoutes} />
         <hr />
         {scripts}
@@ -91,7 +119,7 @@ export function NavbarApp(route: PageRouteMatch): Element {
   ]
 }
 
-export function SidebarApp(route: PageRouteMatch): Element {
+function SidebarApp(route: PageRouteMatch): Element {
   // you can write the AST direct for more compact wire-format
   return [
     'div.app',
@@ -99,9 +127,10 @@ export function SidebarApp(route: PageRouteMatch): Element {
     [
       // or you can write in JSX for better developer-experience (if you're coming from React)
       <>
-        {style}
+        {webAppStyle}
         {scripts}
         {Sidebar.style}
+        <Flush />
         <div class={Sidebar.containerClass}>
           <Sidebar brand={brand} menuRoutes={menuRoutes} />
           <div
@@ -134,7 +163,7 @@ function Footer(attrs: { style?: string }) {
 
 // prefer flat router over nested router for less overhead
 export function attachRoutes(app: Router) {
-  // ajax/middleware routes
+  // ajax/upload/middleware routes
 
   // redirect routes
   Object.entries(redirectDict).forEach(([from, to]) =>
@@ -185,11 +214,7 @@ function responseHTML(
   }
 
   try {
-    renderTemplate(stream, context, {
-      title: route.title || config.site_name,
-      description: route.description || config.site_description,
-      app: App(route),
-    })
+    renderTemplate(stream, context, route)
   } catch (error) {
     if (error === EarlyTerminate) {
       return
@@ -214,11 +239,7 @@ function streamHTML(
   route: PageRouteMatch,
 ) {
   try {
-    renderTemplate(res, context, {
-      title: route.title || config.site_name,
-      description: route.description || config.site_description,
-      app: App(route),
-    })
+    renderTemplate(res, context, route)
     res.end()
   } catch (error) {
     if (error === EarlyTerminate) {
@@ -237,13 +258,15 @@ function streamHTML(
   }
 }
 
-export let onWsMessage: OnWsMessage = (event, ws, _wss) => {
+export let onWsMessage: OnWsMessage = async (event, ws, _wss) => {
   console.log('ws message:', event)
   // TODO handle case where event[0] is not url
   let eventType: string | undefined
   let url: string
   let args: unknown[] | undefined
   let session = getWSSession(ws)
+  let navigation_type: WindowStub['_navigation_type_']
+  let navigation_method: WindowStub['_navigation_method_']
   if (event[0] === 'mount') {
     event = event as ClientMountMessage
     eventType = 'mount'
@@ -254,6 +277,7 @@ export let onWsMessage: OnWsMessage = (event, ws, _wss) => {
       session.timeZone = timeZone
     }
     session.timezoneOffset = event[4]
+    updateRequestSession(ws.session_id, session)
     let cookie = event[5]
     if (cookie) {
       getWsCookies(ws.ws).unsignedCookies = Object.fromEntries(
@@ -265,13 +289,15 @@ export let onWsMessage: OnWsMessage = (event, ws, _wss) => {
         ),
       )
     }
-    logRequest(ws.request, 'ws', url)
+    navigation_type = event[6]
+    navigation_method = event[7]
+    logRequest(ws.request, 'ws', url, ws.session_id)
   } else if (event[0][0] === '/') {
     event = event as ClientRouteMessage
     eventType = 'route'
     url = event[0]
     args = event.slice(1)
-    logRequest(ws.request, 'ws', url)
+    logRequest(ws.request, 'ws', url, ws.session_id)
   } else {
     console.log('unknown type of ws message:', event)
     return
@@ -285,8 +311,28 @@ export let onWsMessage: OnWsMessage = (event, ws, _wss) => {
     event: eventType,
     session,
   }
-  then(matchRoute(context), route => {
-    let node = App(route)
-    dispatchUpdate(context, node, route.title)
-  })
+  try {
+    await then(
+      matchRoute(context),
+      route => {
+        let App = layouts[route.layout_type || config.layout_type]
+        let node = App(route)
+        if (navigation_type === 'express' && navigation_method !== 'GET') return
+        dispatchUpdate(context, node, route.title)
+      },
+      onError,
+    )
+  } catch (error) {
+    onError(error)
+  }
+  function onError(error: unknown) {
+    if (error == EarlyTerminate) {
+      return
+    }
+    if (error instanceof MessageException) {
+      ws.send(error.message)
+      return
+    }
+    console.error(error)
+  }
 }

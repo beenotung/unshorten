@@ -1,6 +1,7 @@
 import * as esbuild from 'esbuild'
 import * as path from 'path'
 import { config } from './config.js'
+import { Raw } from './app/components/raw.js'
 
 export function loadClientPlugin(options: {
   // e.g. dist/client/image.js
@@ -30,11 +31,13 @@ export function loadClientPlugin(options: {
   })
 
   // e.g. js/image.bundle.js
-  let scriptSrc = 'js/' + outFilename
+  let scriptSrc = '/js/' + outFilename
 
   let script = /* html */ `<script src="${scriptSrc}"></script>`
 
-  return { script }
+  let node = Raw(script)
+
+  return { script, node }
 }
 
 function defaultBundleFilename(entryFile: string) {

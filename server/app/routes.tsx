@@ -1,6 +1,6 @@
 import { capitalize } from '@beenotung/tslib/string.js'
 import { Router } from 'url-router.ts'
-import { config, title } from '../config.js'
+import { LayoutType, config, title } from '../config.js'
 import { Redirect } from './components/router.js'
 import type { DynamicContext } from './context'
 import { o } from './jsx/jsx.js'
@@ -11,6 +11,8 @@ import Home from './pages/home.js'
 import NotFoundPageRoute from './pages/not-found.js'
 import { then } from '@beenotung/tslib/result.js'
 import type { MenuRoute } from './components/menu'
+import DemoToast from './pages/demo-toast.js'
+import type { renderWebTemplate } from '../../template/web.js'
 import { VNode } from '../../client/jsx/types.js'
 
 let titles: Record<string, string> = {}
@@ -24,19 +26,28 @@ const StreamingByDefault = true
 
 export type PageRoute = PageRouteOptions & (StaticPageRoute | DynamicPageRoute)
 
+type TemplateFn = typeof renderWebTemplate
+
+type RenderOptions = {
+  layout_type?: LayoutType
+  renderTemplate?: TemplateFn
+}
+
 export type PageRouteOptions = {
   // streaming is enabled by default
   // HTTP headers cannot be set when streaming
   // If you need to set cookies or apply redirection, you may use an express middleware before the generic app route
   streaming?: boolean
-} & Partial<MenuRoute>
+} & Partial<MenuRoute> &
+  RenderOptions
 
 export type StaticPageRoute = {
   title: string
   node: Node | VNode
   description: string
   status?: number
-}
+} & RenderOptions
+
 export type DynamicPageRoute = {
   resolve: (context: DynamicContext) => ResolvedPageRoue
 }
@@ -63,6 +74,7 @@ let routeDict: Routes = {
     node: About,
     streaming: true,
   },
+  // ...DemoToast.routes,
   '/user-agents': {
     title: title('User Agents of Visitors'),
     description: "User agents of this site's visitors",
@@ -94,6 +106,7 @@ Object.entries(routeDict).forEach(([url, route]) => {
       menuText: route.menuText,
       menuUrl: route.menuUrl || url,
       menuMatchPrefix: route.menuMatchPrefix,
+      menuFullNavigate: route.menuFullNavigate,
     })
   }
 })

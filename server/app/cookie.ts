@@ -4,7 +4,6 @@ import type ws from 'ws'
 import type express from 'express'
 import { config } from '../config.js'
 import { debugLog } from '../debug.js'
-import { EarlyTerminate } from './helpers.js'
 import type { Context } from './context'
 
 const log = debugLog('cookie.ts')
@@ -14,17 +13,7 @@ export const cookieMiddleware = cookieParser(config.cookie_secret)
 
 export const mustCookieSecure = config.production
 
-export function getSecureCookies(
-  req: express.Request,
-  res: express.Response,
-): Cookies {
-  if (config.require_https && mustCookieSecure && !req.secure) {
-    const protocol = req.protocol === 'ws' ? 'wss' : 'https'
-    const to = `${protocol}://${req.headers.host}${req.originalUrl}`
-    log('redirect non-secure request to:', to)
-    res.redirect(301, to)
-    throw EarlyTerminate
-  }
+export function getSecureCookies(req: express.Request): Cookies {
   return {
     unsignedCookies: req.cookies,
     signedCookies: req.signedCookies,
@@ -48,7 +37,7 @@ export function listenWSSCookie(wss: ws.Server) {
     req.protocol ??= req.secure ? 'wss' : 'ws'
     req.originalUrl ??= req.url || '/'
     cookieMiddleware(req, res, () => {
-      const cookies = getSecureCookies(req, res)
+      const cookies = getSecureCookies(req)
       ws_cookies.set(ws, cookies)
     })
     ws.on('close', () => {
@@ -68,7 +57,7 @@ export function getWsCookies(ws: WebSocket): Cookies {
 
 export function getContextCookies(context: Context): Cookies | null {
   if (context.type === 'express') {
-    return getSecureCookies(context.req, context.res)
+    return getSecureCookies(context.req)
   }
   if (context.type === 'ws') {
     return getWsCookies(context.ws.ws)

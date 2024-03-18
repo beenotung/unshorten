@@ -26,9 +26,6 @@
       body {
         padding-bottom: 2.5rem;
       }
-      #noscript {
-        display: none;
-      }
       #ws_status {
         position: fixed;
         bottom: 1em;
@@ -60,6 +57,7 @@
     <script>
       document.getElementById('noscript').remove()
       document.getElementById('ws_status').removeAttribute('hidden')
+      let template_name = 'web'
     </script>
     {app}
   </body>

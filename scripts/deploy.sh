@@ -4,6 +4,26 @@ set -o pipefail
 
 source scripts/config
 
+if [ -z "$MODE" ]; then
+  echo "possible mode:"
+  echo "  [f] first   (start new pm2 process)"
+  echo "  [q] quick   (for UI-only updates)"
+  echo "  [ ] default (install dependencies and run database migration)"
+  read -p "mode: " MODE
+fi
+case "$MODE" in
+  f)
+    MODE="first"
+    ;;
+  q)
+    MODE="quick"
+    ;;
+  '')
+    MODE="default"
+    ;;
+esac
+echo "deploy mode: $MODE"
+
 set -x
 
 if [ "$MODE" == "quick" ]; then
@@ -43,9 +63,6 @@ else
       set -e
       cd $root_dir
       mkdir -p data
-      mkdir -p db
-      cd db
-      ln -sf ../data
     "
     pm2_cmd="cd $root_dir && pm2 start --name $pm2_name dist/server/index.js"
   else
@@ -58,7 +75,7 @@ else
     cd $root_dir
     pnpm i -r
     cd db
-    npm run migrate
+    npm run setup
     $pm2_cmd
   "
 fi

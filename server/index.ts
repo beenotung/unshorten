@@ -35,7 +35,7 @@ listenWSSConnection({
 })
 
 app.use((req, res, next) => {
-  logRequest(req, req.method, req.url)
+  logRequest(req, req.method, req.url, null)
   next()
 })
 
@@ -55,6 +55,9 @@ attachRoutes(app)
 
 app.use((error: HttpError, req: Request, res: Response, next: NextFunction) => {
   res.status(error.statusCode || 500)
+  if (error instanceof Error && !(error instanceof HttpError)) {
+    console.error(error)
+  }
   res.json({ error: String(error) })
 })
 

@@ -4,15 +4,15 @@ interface HTMLStream {
 }
 type HTMLFunc = (stream: HTMLStream) => void
 
-export type IndexOptions = {
+export type WebOptions = {
   title: string | HTMLFunc
   description: string | HTMLFunc
   app: string | HTMLFunc
 }
 
-export function renderIndexTemplate(
+export function renderWebTemplate(
   stream: HTMLStream,
-  options: IndexOptions,
+  options: WebOptions,
 ): void {
   stream.write(/* html */ `<!doctype html>
 <html lang="en">
@@ -46,9 +46,6 @@ export function renderIndexTemplate(
       body {
         padding-bottom: 2.5rem;
       }
-      #noscript {
-        display: none;
-      }
       #ws_status {
         position: fixed;
         bottom: 1em;
@@ -80,6 +77,7 @@ export function renderIndexTemplate(
     <script>
       document.getElementById('noscript').remove()
       document.getElementById('ws_status').removeAttribute('hidden')
+      let template_name = 'web'
     </script>
     `)
   typeof options.app == 'function' ? options.app(stream) : stream.write(options.app)

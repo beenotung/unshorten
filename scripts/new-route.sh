@@ -5,43 +5,62 @@ set -o pipefail
 if [ $# == 0 ]; then
   read -p "page name: " name
 else
-  name="$1"
+  name="$@"
+  echo "page name: $name"
 fi
 
-Name=$(echo "$name" | sed 's/^\(.\)/\U\1/')
+template_file="server/app/pages/route-template-web.tsx"
 
-file="server/app/pages/$name.tsx"
+# trim spaces
+# replace hyphen to space
+# e.g. user agents
+name="$(echo "$name" | sed 's/-/ /g' | sed -r 's/^ +//g' | sed -r 's/ +$//g')"
 
-echo "import { o } from '../jsx/jsx.js'
-import { Routes } from '../routes.js'
-import { apiEndpointTitle, title } from '../../config.js'
+# capitalize
+# e.g. User Agents
+title="$(node -p "'$name'.replace(/-/g,' ').replace(/(^| )\w/g,s=>s.toUpperCase())")"
 
-function $Name() {
-  return <div id='$name'>
-    <h1>$Name</h1>
-  </div>
-}
+# remove spaces
+# e.g. UserAgents
+id="$(echo "$title" | sed -r 's/ //g')"
 
-function submit() {
-  return 'TODO'
-}
+# lowercase
+# replace spaces to hyphen
+# e.g. user-agents
+url="$(echo "$name" | awk '{print tolower($0)}' | sed 's/ /-/g')"
 
-let routes: Routes = {
-  '/$name': {
-    title: title('$Name'),
-    description: 'TODO',
-    menuText: '$Name',
-    node: <$Name/>,
-  },
-  '/$name/submit': {
-    title: apiEndpointTitle,
-    description: 'TODO',
-    node: [submit],
-    streaming: false,
-  },
-}
+file="server/app/pages/$url.tsx"
 
-export default { routes }" > "$file"
+if [ -f "$file" ]; then
+  echo >&2 "File already exist: $file"
+  read -p "Overwrite? [y/N] " ans
+  if [[ "$ans" != y* ]]; then
+    echo >&2 "Cancelled."
+    exit
+  fi
+fi
+
+cat "$template_file" \
+  | sed "s/__id__/$id/" \
+  | sed "s/__title__/$title/" \
+  | sed "s/__name__/$name/" \
+  | sed "s/__url__/$url/" \
+  > "$file"
 
 echo "saved to $file"
 code "$file"
+
+if [ -d dist ]; then
+  touch dist/__dev_restart__
+fi
+
+file="server/app/routes.tsx"
+echo "import $id from './pages/$url.js'" > "$file.tmp"
+cat "$file" >> "$file.tmp"
+mv "$file.tmp" "$file"
+if [[ "$(uname)" == "Darwin" ]]; then
+  sed -i '' "s/let routeDict: Routes = {/let routeDict: Routes = {\n  ...$id.routes,/" "$file"
+else
+  sed -i "s/let routeDict: Routes = {/let routeDict: Routes = {\n  ...$id.routes,/" "$file"
+fi
+echo "updated $file"
