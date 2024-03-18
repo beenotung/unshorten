@@ -150,7 +150,7 @@ function Reveal(attrs: { link: string; res: Response }) {
       {poweredBy ? <Field label="Powered by" value={poweredBy} /> : null}
       <Field label="Source Link" value={link} />
       {res.url != url.href && res.url != link ? (
-        <Field label="Original Destination Link" value={res.url} />
+        <Field label="Original Destination Link" value={decodeURI(res.url)} />
       ) : null}
       <Field label="Resolved Destination Link" value={decodeURI(url.href)} />
       <SourceCode page="home.tsx" />
