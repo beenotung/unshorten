@@ -177,7 +177,7 @@ function Field(attrs: { label: string; value: any }) {
 function resolveReveal(
   context: DynamicContext,
 ): ResolvedPageRoue | StaticPageRoute {
-  const link = context.routerMatch?.search
+  let link = context.routerMatch?.search
     ? new URLSearchParams(context.routerMatch?.search).get('link')
     : null
   let safeLink = link ? sanitize(link) : null
@@ -188,6 +188,9 @@ function resolveReveal(
       description: config.site_description,
       node: renderRedirect('/'),
     }
+  }
+  if (!link.includes('://')) {
+    link = 'https://' + link
   }
   if (!link.startsWith('http://') && !link.startsWith('https://')) {
     return {
