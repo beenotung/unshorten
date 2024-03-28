@@ -10,6 +10,8 @@ export let trackingParamKeys = [
   'gclid',
   // facebook tracking parameters
   'fbclid',
+  // Taboola (advertising platform)
+  'tblci',
 ]
 
 export let facebookTrackParamKeys = ['extid', 'mibextid', 'ref', 'acontext']
