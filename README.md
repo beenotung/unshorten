@@ -4,6 +4,17 @@ Reveal the destination of shorten urls and remove tracking parameters.
 
 Deployed on [unshorten.respects.cc](https://unshorten.respects.cc/)
 
+## Features
+
+- Display destination of redirection (e.g. the page behind Bitly)
+- Remove tracking parameters (e.g. UTM parameters)
+- Manually remove extra search params
+- Copy into clipboard
+- Display technical details
+  - Server Header (e.g. Express)
+  - Content Type (e.g. text/html)
+  - Response Status (e.g. 200 OK)
+
 ## Development
 
 Powered by [ts-liveview](https://github.com/beenotung/ts-liveview/blob/v5-minimal-template/README.md)
