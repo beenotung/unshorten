@@ -87,6 +87,9 @@ let brand = (
       href="/"
     >
       {config.site_name}
+    </Link>{' '}
+    <Link href="https://github.com/beenotung/unshorten" target="_blank">
+      git
     </Link>
   </div>
 )
