@@ -115,6 +115,7 @@ function Reveal(attrs: { link: string; res: Response }) {
               <tr>
                 <th>Param</th>
                 <th>Value</th>
+                <th>Control</th>
               </tr>
             </thead>
             <tbody>
@@ -123,11 +124,30 @@ function Reveal(attrs: { link: string; res: Response }) {
                   <tr>
                     <td>{key}</td>
                     <td class="long-line">{value}</td>
+                    <td>
+                      <button onclick="removeParam(event)">Remove</button>
+                    </td>
                   </tr>
                 )),
               ]}
             </tbody>
           </table>
+          {Script(/* javascript */ `
+function removeParam(event) {
+  let tr = event.target.closest('tr')
+  let key = tr.cells[0].innerText
+  let code = document.querySelector('.destination-container code')
+  let url = new URL(code.innerText)
+  let params = new URLSearchParams(url.search)
+  params.delete(key)
+  url.search = params
+  code.textContent = url
+  tr.remove()
+  params = new URLSearchParams({ link: url.href })
+  url = location.pathname + '?' + params
+  history.pushState({}, "", url)
+}
+`)}
         </div>
       ) : null}
       {removedTrackingParamEntries.length > 0 ? (
