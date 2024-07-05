@@ -17,6 +17,7 @@ import { Style } from '../components/style.js'
 import { new_counter } from '@beenotung/tslib/counter.js'
 import { mapArray } from '../components/fragment.js'
 import { Script } from '../components/script.js'
+import { Copyable } from '../components/copyable.js'
 
 let style = Style(/* css */ `
 table.search-params {
@@ -43,18 +44,6 @@ table.search-params th {
 }
 .destination-container {
   margin-top: 1rem;
-}
-.destination-container code {
-  background-color: #eee;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  margin: 0.25rem;
-  display: block;
-  width: fit-content;
-  border: none;
-}
-.destination-container button {
-  margin: 0.25rem;
 }
 `)
 
@@ -170,29 +159,7 @@ function removeParam(event) {
           )}
         />
       ) : null}
-
-      <div class="destination-container">
-        <code>{url.href}</code>
-        <button onclick="copyToClipboard(event)">Copy</button>
-      </div>
-      {Script(/* javascript */ `
-function copyToClipboard(event) {
-  let button = event.target
-  let code = button.parentElement.querySelector('code')
-  try {
-    let range = document.createRange()
-    range.selectNode(code)
-    window.getSelection().removeAllRanges()
-    window.getSelection().addRange(range)
-    document.execCommand('copy')
-    button.textContent = 'Copied to clipboard'
-    button.style.color = 'green'
-  } catch (e) {
-    button.textContent = 'Copy not supported, please select the text and copy manually.'
-  }
-}
-`)}
-
+      <Copyable.Container class="destination-container" text={url.href} />
       <hr />
       <h2>Technical Details</h2>
       <Field
