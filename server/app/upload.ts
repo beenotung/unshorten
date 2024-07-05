@@ -1,10 +1,9 @@
-import { Formidable, Part } from 'formidable'
-import { config } from '../config.js'
+import { Formidable, Part, Options } from 'formidable'
 import { existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import { KB } from '@beenotung/tslib/size.js'
 import { extname, join } from 'path'
 import { client_config } from '../../client/client-config.js'
+import { env } from '../env.js'
 
 const maxTrial = 10
 
@@ -46,19 +45,18 @@ export function createUploadForm(options?: {
 
   /** @default 1 (single file) */
   maxFiles?: number
+
+  /** @default randomUUID + extname */
+  filename?: string | Options['filename']
 }) {
-  let uploadDir = options?.uploadDir || config.upload_dir
+  let uploadDir = options?.uploadDir || env.UPLOAD_DIR
   let mimeTypeRegex = options?.mimeTypeRegex || MimeTypeRegex.any_image
   let maxFileSize = options?.maxFileSize || client_config.max_image_size
   let maxFiles = options?.maxFiles || 1
 
-  cached_mkdir(uploadDir)
-  let form = new Formidable({
-    uploadDir,
-    maxFileSize,
-    maxFiles,
-    multiples: true,
-    filename(name, ext, part, _form): string {
+  const filename: string | Options['filename'] =
+    options?.filename ||
+    ((_name, _ext, part, _file): string => {
       let extname = detectExtname(part)
       for (let i = 0; i < maxTrial; i++) {
         let filename = randomUUID() + '.' + extname
@@ -66,7 +64,15 @@ export function createUploadForm(options?: {
         return filename
       }
       throw new Error('too many files in uploadDir')
-    },
+    })
+
+  cached_mkdir(uploadDir)
+  let form = new Formidable({
+    uploadDir,
+    maxFileSize,
+    maxFiles,
+    multiples: true,
+    filename: typeof filename == 'string' ? () => filename : filename,
     filter(part): boolean {
       return !!part.mimetype && mimeTypeRegex.test(part.mimetype)
     },

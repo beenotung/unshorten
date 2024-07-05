@@ -2,7 +2,7 @@ import { renderRedirect } from '../components/router.js'
 import { o } from '../jsx/jsx.js'
 import { prerender } from '../jsx/html.js'
 import SourceCode from '../components/source-code.js'
-import { ResolvedPageRoue, Routes, StaticPageRoute } from '../routes.js'
+import { ResolvedPageRoute, Routes, StaticPageRoute } from '../routes.js'
 import { config, title } from '../../config.js'
 import { DynamicContext } from '../context.js'
 import { renderError } from '../components/error.js'
@@ -201,7 +201,7 @@ function Field(attrs: { label: string; value: any }) {
 
 function resolveReveal(
   context: DynamicContext,
-): ResolvedPageRoue | StaticPageRoute {
+): ResolvedPageRoute | StaticPageRoute {
   let link = context.routerMatch?.search
     ? new URLSearchParams(context.routerMatch?.search).get('link')
     : null

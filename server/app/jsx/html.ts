@@ -13,7 +13,7 @@ import type {
 import { HTMLStream, noop } from './stream.js'
 import { Flush } from '../components/flush.js'
 import { renderError, renderErrorNode } from '../components/error.js'
-import { EarlyTerminate, ErrorNode, MessageException } from '../helpers.js'
+import { EarlyTerminate, ErrorNode, MessageException } from '../../exception.js'
 
 const log = debug('html.ts')
 log.enabled = true
@@ -209,6 +209,19 @@ export function flagsToClassName(flags: Record<string, boolean>): string {
     }
   })
   return classes.join(' ')
+}
+
+export function concatClassNames(
+  ...classNames: (string | null | undefined)[]
+): string | undefined {
+  let className = ''
+  for (let name of classNames) {
+    if (name) {
+      className += ' ' + name
+    }
+  }
+  className = className.trim()
+  return className || undefined
 }
 
 // omit style-name conversion, use it as-is

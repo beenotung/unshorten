@@ -2,7 +2,7 @@ import { capitalize } from '@beenotung/tslib/string.js'
 import { Router } from 'url-router.ts'
 import { LayoutType, config, title } from '../config.js'
 import { Redirect } from './components/router.js'
-import type { DynamicContext } from './context'
+import type { Context, DynamicContext } from './context'
 import { o } from './jsx/jsx.js'
 import type { Node } from './jsx/types'
 import About, { License } from './pages/about.js'
@@ -14,6 +14,8 @@ import type { MenuRoute } from './components/menu'
 import DemoToast from './pages/demo-toast.js'
 import type { renderWebTemplate } from '../../template/web.js'
 import { VNode } from '../../client/jsx/types.js'
+import { EarlyTerminate, MessageException } from '../exception.js'
+import { renderError } from './components/error.js'
 
 let titles: Record<string, string> = {}
 
@@ -49,9 +51,9 @@ export type StaticPageRoute = {
 } & RenderOptions
 
 export type DynamicPageRoute = {
-  resolve: (context: DynamicContext) => ResolvedPageRoue
+  resolve: (context: DynamicContext) => ResolvedPageRoute
 }
-export type ResolvedPageRoue = StaticPageRoute | Promise<StaticPageRoute>
+export type ResolvedPageRoute = StaticPageRoute | Promise<StaticPageRoute>
 
 export type PageRouteMatch = PageRouteOptions & StaticPageRoute
 
@@ -62,7 +64,7 @@ export type Routes = Record<string, PageRoute>
 // or invoke functional component with x-html tag, e.g. `<Editor/>
 
 // TODO direct support alternative urls instead of having to repeat the entry
-let routeDict: Routes = {
+let routeDict = {
   ...Home,
   '/about/:mode?': {
     title: title('About'),
@@ -87,7 +89,7 @@ let routeDict: Routes = {
       'ts-liveview is a free open source project licensed under the BSD 2-Clause License',
     node: License,
   },
-}
+} satisfies Routes
 
 export let redirectDict: Record<string, string> = {
   '/server/app/pages/home.tsx': '/',
@@ -98,7 +100,7 @@ export const pageRouter = new Router<PageRoute>()
 
 export const menuRoutes: MenuRoute[] = []
 
-Object.entries(routeDict).forEach(([url, route]) => {
+Object.entries(routeDict as Routes).forEach(([url, route]) => {
   pageRouter.add(url, { url, ...route })
   if (route.menuText) {
     menuRoutes.push({
@@ -140,6 +142,29 @@ export function getContextSearchParams(context: DynamicContext) {
   return new URLSearchParams(
     context.routerMatch?.search || context.url.split('?').pop(),
   )
+}
+
+export function errorRoute(
+  error: unknown,
+  context: Context,
+  title: string,
+  description: string,
+): StaticPageRoute {
+  if (error == EarlyTerminate || error instanceof MessageException) {
+    throw error
+  }
+  if (context.type == 'ws' && typeof error == 'string') {
+    throw new MessageException([
+      'eval',
+      // `showToast(${JSON.stringify(error)},'error')`,
+      `showAlert(${JSON.stringify(error)},'error')`,
+    ])
+  }
+  return {
+    title,
+    description,
+    node: renderError(error, context),
+  }
 }
 
 if (config.setup_robots_txt) {

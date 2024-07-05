@@ -2,7 +2,7 @@ import { o } from '../jsx/jsx.js'
 import { castDynamicContext, Context } from '../context.js'
 import type { Node, NodeList } from '../jsx/types'
 import { Router as UrlRouter } from 'url-router.ts'
-import { EarlyTerminate } from '../helpers.js'
+import { EarlyTerminate } from '../../exception.js'
 import { setSessionUrl } from '../session.js'
 
 export type LinkAttrs = {
@@ -39,7 +39,7 @@ export function Link(attrs: LinkAttrs) {
 }
 
 export function Redirect(
-  attrs: { href: string; status?: number },
+  attrs: { href: string; full?: boolean; status?: number },
   context: Context,
 ) {
   const href = attrs.href
@@ -55,11 +55,13 @@ export function Redirect(
   }
   if (context.type === 'ws') {
     setSessionUrl(context.ws, attrs.href)
-    context.ws.send(['redirect', attrs.href])
+    context.ws.send(
+      attrs.full ? ['redirect', attrs.href, 1] : ['redirect', attrs.href],
+    )
     throw EarlyTerminate
   }
   return (
-    <a href={href} data-live="redirect">
+    <a href={href} data-live="redirect" data-full={attrs.full || undefined}>
       Redirect to {href}
     </a>
   )

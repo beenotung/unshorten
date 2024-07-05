@@ -2,7 +2,7 @@ import { o } from './jsx/jsx.js'
 import { scanTemplateDir } from '../template-file.js'
 import { NextFunction, Request, Response, Router } from 'express'
 import type { Context, ExpressContext, WsContext } from './context'
-import type { Element, Node } from './jsx/types'
+import type { Element } from './jsx/types'
 import {
   escapeHTMLAttributeValue,
   escapeHTMLTextContent,
@@ -12,11 +12,11 @@ import {
 import { sendHTMLHeader } from './express.js'
 import { OnWsMessage } from '../ws/wss.js'
 import { dispatchUpdate } from './jsx/dispatch.js'
-import { EarlyTerminate, MessageException } from './helpers.js'
+import { EarlyTerminate, MessageException } from '../exception.js'
 import { getWSSession } from './session.js'
 import { Flush } from './components/flush.js'
 import { LayoutType, config } from '../config.js'
-import Stats from './stats.js'
+import Stats from './components/stats.js'
 import { MuteConsole, Script } from './components/script.js'
 import {
   matchRoute,
