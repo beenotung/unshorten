@@ -159,7 +159,10 @@ function removeParam(event) {
           )}
         />
       ) : null}
-      <Copyable.Container class="destination-container" text={url.href} />
+      <Copyable.Container
+        class="destination-container"
+        text={decodeURI(url.href)}
+      />
       <hr />
       <h2>Technical Details</h2>
       <Field
