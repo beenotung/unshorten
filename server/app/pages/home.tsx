@@ -91,7 +91,7 @@ function Reveal(attrs: { link: string; res: Response }) {
       <Field
         label="Destination Link"
         value={
-          <a href={decodeURI(url.href)} rel="nofollow">
+          <a id="destination_link" href={decodeURI(url.href)} rel="nofollow">
             {decodeURI(short_url)}
           </a>
         }
@@ -134,6 +134,7 @@ function removeParam(event) {
   tr.remove()
   params = new URLSearchParams({ link: url.href })
   url = location.pathname + '?' + params
+  destination_link.href = url
   history.pushState({}, "", url)
 }
 `)}
