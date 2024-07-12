@@ -18,6 +18,7 @@ import { new_counter } from '@beenotung/tslib/counter.js'
 import { mapArray } from '../components/fragment.js'
 import { Script } from '../components/script.js'
 import { Copyable } from '../components/copyable.js'
+import { responseMiddleware } from '../extensions/index.js'
 
 let style = Style(/* css */ `
 table.search-params {
@@ -232,6 +233,7 @@ function resolveReveal(
     }
   }
   return fetch(link)
+    .then(res => responseMiddleware(res))
     .then(res => {
       return {
         title: 'Reveal ' + safeLink,

@@ -43,6 +43,7 @@
     "express": "^4.19.2",
     "fastest-levenshtein": "^1.0.16",
     "formidable": "^3.5.1",
+    "html-parser.ts": "^1.9.1",
     "listening-on": "^2.0.9",
     "marked": "^12.0.2",
     "open": "^10.1.0",
