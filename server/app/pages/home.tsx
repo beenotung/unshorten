@@ -131,11 +131,11 @@ function removeParam(event) {
   let params = new URLSearchParams(url.search)
   params.delete(key)
   url.search = params
-  code.textContent = url
+  code.textContent = decodeURI(url)
   tr.remove()
   params = new URLSearchParams({ link: url.href })
   url = location.pathname + '?' + params
-  destination_link.href = url
+  destination_link.href = decodeURI(url)
   history.pushState({}, "", url)
 }
 `)}
