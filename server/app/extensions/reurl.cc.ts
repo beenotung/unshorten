@@ -15,9 +15,14 @@ addResponseMiddleware(async res => {
     walkNode(doc, node => {
       if (node instanceof HTMLElement) {
         if (node.isTagName('head')) return 'skip_child'
-        if (node.attributes?.getValue('id') != 'url') return
-        let url = node.attributes.getValue('value')!
-        if (url) throw new Found(url)
+        let id = node.attributes?.getValue('id')
+        let value = node.attributes?.getValue('value')
+        if (
+          (id == 'url' || id == 'target') &&
+          (value?.startsWith('https://') || value?.startsWith('http://'))
+        ) {
+          throw new Found(value)
+        }
       }
     })
     return res
