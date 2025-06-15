@@ -18,7 +18,8 @@ import { new_counter } from '@beenotung/tslib/counter.js'
 import { mapArray } from '../components/fragment.js'
 import { Script } from '../components/script.js'
 import { Copyable } from '../components/copyable.js'
-import { responseMiddleware } from '../extensions/index.js'
+import { linkMiddleware, responseMiddleware } from '../extensions/index.js'
+import { removeXhsTrackingParams } from '../extensions/xhslink.com.js'
 
 let style = Style(/* css */ `
 table.search-params {
@@ -67,6 +68,9 @@ function Reveal(attrs: { link: string; res: Response }) {
     if (u) url = new URL(u)
   }
   let removedTrackingParams: Record<string, string[]> = {}
+  if (url.hostname == 'www.xiaohongshu.com') {
+    removeXhsTrackingParams({ removedTrackingParams, url })
+  }
   removeTrackingParams({ removedTrackingParams, url }, trackingParamKeys)
   if (url.hostname.indexOf('facebook')) {
     removeTrackingParams({ removedTrackingParams, url }, facebookTrackParamKeys)
@@ -204,9 +208,9 @@ function Field(attrs: { label: string; value: any }) {
   )
 }
 
-function resolveReveal(
+async function resolveReveal(
   context: DynamicContext,
-): ResolvedPageRoute | StaticPageRoute {
+): Promise<StaticPageRoute> {
   let link = context.routerMatch?.search
     ? new URLSearchParams(context.routerMatch?.search).get('link')
     : null
@@ -217,6 +221,15 @@ function resolveReveal(
       title: defaultTitle,
       description: config.site_description,
       node: renderRedirect('/'),
+    }
+  }
+  try {
+    link = await linkMiddleware(link)
+  } catch (error) {
+    return {
+      title: defaultTitle,
+      description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
+      node: renderError(`Failed to parse link from ${safeLink}`, context),
     }
   }
   if (!link.includes('://')) {

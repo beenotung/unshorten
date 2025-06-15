@@ -32,3 +32,21 @@ export function removeTrackingParams(
     }
   }
 }
+
+// instead of remove blacklist params, this function only keep whitelist params
+export function removeTrackingParamsExcept(
+  context: {
+    removedTrackingParams: Record<string, string[]>
+    url: URL
+  },
+  allowedKeys: string[],
+) {
+  let { url, removedTrackingParams } = context
+  let { searchParams } = url
+  let keys = Array.from(searchParams.keys())
+  for (let key of keys) {
+    if (allowedKeys.includes(key)) continue
+    removedTrackingParams[key] = searchParams.getAll(key)
+    searchParams.delete(key)
+  }
+}
