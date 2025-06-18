@@ -49,14 +49,40 @@ table.search-params th {
 }
 `)
 
+let script = Script(/* javascript */ `
+function toggle_buttons() {
+  let is_empty = link_input.value.length == 0
+  clear_button.disabled = is_empty
+  submit_button.disabled = is_empty
+}
+toggle_buttons()
+`)
+
 let home = prerender(
   <div id="home">
     <h1>Reveal Shorten URL</h1>
-    <form method="get" action="/reveal">
-      <input name="link" placeholder="Paste shorten url here..." />
-      <input type="submit" value="Reveal" />
+    <form method="get" action="/reveal" style="margin-bottom: 1.5rem">
+      <div style="display: flex; gap: 0.25rem; flex-wrap: wrap">
+        <input
+          name="link"
+          placeholder="Paste shorten url here..."
+          style="flex-grow: 1; max-width: 30ch"
+          id="link_input"
+          oninput="toggle_buttons()"
+        />
+        <input
+          type="reset"
+          value="Clear"
+          id="clear_button"
+          onclick="link_input.focus()"
+        />
+      </div>
+      <div style="margin-top: 0.5rem">
+        <input type="submit" value="Reveal" id="submit_button" />
+      </div>
     </form>
     <SourceCode page="home.tsx" />
+    {script}
   </div>,
 )
 
