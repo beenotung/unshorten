@@ -81,10 +81,10 @@ function Form(attrs: { link?: string }) {
           value={attrs.link ? decodeURI(attrs.link) : ''}
         />
         <input
-          type="reset"
+          type="button"
           value="Clear"
           id="clear_button"
-          onclick="link_input.focus()"
+          onclick="link_input.value=''; link_input.focus()"
         />
       </div>
       <div style="margin-top: 0.5rem">
