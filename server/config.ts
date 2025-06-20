@@ -22,7 +22,7 @@ export let config = {
   production,
   development,
   minify: production,
-  site_name: 'UnShorten URL Revealer with Respects',
+  site_name: 'UnShorten URL',
   site_description:
     'Reveal the destination of shorten url and remove tracking parameters',
   setup_robots_txt: false,

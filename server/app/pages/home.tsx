@@ -123,7 +123,12 @@ function Reveal(attrs: { link: string; res: Response }) {
       <Field
         label="Destination Link"
         value={
-          <a id="destination_link" href={decodeURI(url.href)} rel="nofollow">
+          <a
+            id="destination_link"
+            href={decodeURI(url.href)}
+            rel="nofollow"
+            target="_blank"
+          >
             {decodeURI(short_url)}
           </a>
         }
