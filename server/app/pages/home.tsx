@@ -61,6 +61,14 @@ toggle_buttons()
 let home = prerender(
   <div id="home">
     <h1>Reveal Shorten URL</h1>
+    <Form />
+    <SourceCode page="home.tsx" />
+    {script}
+  </div>,
+)
+
+function Form(attrs: { link?: string }) {
+  return (
     <form method="get" action="/reveal" style="margin-bottom: 1.5rem">
       <div style="display: flex; gap: 0.25rem; flex-wrap: wrap">
         <input
@@ -69,6 +77,8 @@ let home = prerender(
           style="flex-grow: 1; max-width: 30ch"
           id="link_input"
           oninput="toggle_buttons()"
+          autocomplete="off"
+          value={attrs.link ? decodeURI(attrs.link) : ''}
         />
         <input
           type="reset"
@@ -81,10 +91,8 @@ let home = prerender(
         <input type="submit" value="Reveal" id="submit_button" />
       </div>
     </form>
-    <SourceCode page="home.tsx" />
-    {script}
-  </div>,
-)
+  )
+}
 
 function Reveal(attrs: { link: string; res: Response }) {
   let { link, res } = attrs
@@ -111,14 +119,7 @@ function Reveal(attrs: { link: string; res: Response }) {
     <div id="reveal-page">
       <h1>Reveal Shorten URL</h1>
       {style}
-      <form method="get" action="/reveal">
-        <input
-          name="link"
-          placeholder="Paste shorten url here..."
-          value={decodeURI(link)}
-        />
-        <input type="submit" value="Reveal" />
-      </form>
+      <Form link={link} />
       <Field
         label="Destination Link"
         value={
