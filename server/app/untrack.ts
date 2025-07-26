@@ -1,5 +1,6 @@
 export let trackingParamKeys = [
   // reference: https://en.wikipedia.org/wiki/UTM_parameters
+  'utm_id',
   'utm_source',
   'utm_medium',
   'utm_campaign',
