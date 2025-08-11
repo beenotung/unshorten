@@ -8,13 +8,20 @@
   "license": "BSD-2-Clause",
   "main": "index.js",
   "scripts": {
+    "ui": "erd-ui",
     "setup": "run-s migrate seed",
-    "dev": "run-s migrate update",
-    "update": "run-s gen-migrate migrate gen-proxy",
-    "gen-migrate": "auto-migrate ../data/db.sqlite3 < erd.txt",
+    "dev": "run-s migrate plan update",
     "migrate": "knex migrate:latest",
+    "plan": "auto-migrate ../data/db.sqlite3 < erd.txt",
+    "rename": "auto-migrate --rename ../data/db.sqlite3 < erd.txt",
+    "update": "run-s migrate gen-proxy",
     "seed": "ts-node seed.ts",
     "gen-proxy": "erd-to-proxy < erd.txt > proxy.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   },
   "dependencies": {
     "better-sqlite3-proxy": "^2.11.1",
@@ -22,6 +29,7 @@
     "knex": "^3.1.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/integer": "^4.0.3",
     "@types/node": "^22.15.32",
     "npm-run-all": "^4.1.5",
