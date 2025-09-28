@@ -2,24 +2,30 @@ import { removeTrackingParamsExcept } from '../untrack.js'
 import { addLinkMiddleware } from './index.js'
 
 addLinkMiddleware(link => {
-  let start_1 = link.indexOf('http://xhslink.com/a/')
-  let start_2 = link.indexOf('http://xhslink.com/m/')
-  let start_3 = link.indexOf('http://xhslink.com/o/')
-  let start = pickIndex(start_1, start_2, start_3)
+  let start = pickIndex(
+    link.indexOf('http://xhslink.com/a/'),
+    link.indexOf('http://xhslink.com/m/'),
+    link.indexOf('http://xhslink.com/o/'),
+    link.indexOf('https://xhslink.com/a/'),
+    link.indexOf('https://xhslink.com/m/'),
+    link.indexOf('https://xhslink.com/o/'),
+  )
   if (start == -1) return link
 
-  let end_1 = link.indexOf('，', start)
-  let end_2 = link.indexOf(' ', start)
-  let end_3 = link.indexOf('\n', start)
-  let end = pickIndex(end_1, end_2, end_3)
+  let end = pickIndex(
+    link.indexOf('，', start),
+    link.indexOf(' ', start),
+    link.indexOf('\n', start),
+  )
   if (end == -1) return link
 
   return link.slice(start, end)
 })
 
-function pickIndex(...args: number[]) {
-  if (args.length === 0) return -1
-  return Math.min(...args.filter(a => a !== -1))
+function pickIndex(...indexList: number[]) {
+  indexList = indexList.filter(index => index != -1)
+  if (indexList.length == 0) return -1
+  return Math.min(...indexList)
 }
 
 export function removeXhsTrackingParams(context: {
