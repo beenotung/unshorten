@@ -1,4 +1,4 @@
-import type { Context } from '../context'
+import type { Context, StaticContext } from '../context'
 import debug from 'debug'
 import type {
   html,
@@ -12,8 +12,9 @@ import type {
 } from './types'
 import { HTMLStream, noop } from './stream.js'
 import { Flush } from '../components/flush.js'
-import { renderError, renderErrorNode } from '../components/error.js'
+import { renderError, renderErrorNode, showError } from '../components/error.js'
 import { EarlyTerminate, ErrorNode, MessageException } from '../../exception.js'
+import { evalLocale } from '../components/locale.js'
 
 const log = debug('html.ts')
 log.enabled = true
@@ -64,8 +65,17 @@ export function nodeListToHTML(nodeList: NodeList, context: Context): html {
   return html
 }
 
-export function prerender(node: Node): Raw {
-  let html = nodeToHTML(node, { type: 'static' })
+export function prerender(
+  node: Node,
+  context: Context | Omit<StaticContext, 'type'> = {
+    type: 'static',
+    language: 'en',
+  },
+): Raw {
+  if (!('type' in context)) {
+    context = { type: 'static', ...context }
+  }
+  let html = nodeToHTML(node, context)
   return ['raw', html]
 }
 
@@ -121,6 +131,10 @@ export function writeNode(
         writeNode(stream, renderErrorNode(error, context), context)
       } else {
         console.error('Caught error from componentFn:', error)
+        if (context.type == 'ws') {
+          context.ws.send(showError(error))
+          throw EarlyTerminate
+        }
         writeNode(stream, renderError(error, context), context)
       }
     }
@@ -172,17 +186,14 @@ function writeElement(
   }
   if (attrs) {
     Object.entries(attrs).forEach(([name, value]) => {
-      if (value === undefined || value === null) return
-      switch (name) {
-        case 'class':
-        case 'className':
-        case 'style':
-          if (!value) {
-            return
-          }
+      value = evalLocale(value, context)
+      if (value === undefined || value === null || value === false) return
+      if (value === '' || value === true) {
+        html += ` ${name}`
+      } else {
+        value = escapeHTMLAttributeValue(value)
+        html += ` ${name}=${value}`
       }
-      value = escapeHTMLAttributeValue(value)
-      html += ` ${name}=${value}`
     })
   }
   html += '>'
@@ -193,6 +204,13 @@ function writeElement(
     case 'br':
     case 'hr':
     case 'meta':
+    case 'link':
+    case 'base':
+    case 'source':
+    case 'track':
+    case 'col':
+    case 'param':
+    case 'area':
       return
   }
   if (children) {

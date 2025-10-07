@@ -3,13 +3,16 @@ import type { ManagedWebsocket } from '../ws/wss'
 import type { RouteContext } from 'url-router.ts'
 import type { Session } from './session'
 import type { PageRoute } from './routes'
-import { getContextCookies } from './cookie.js'
-import { HttpError } from '../exception.js'
+import { getContextCookies, setContextCookie } from './cookie.js'
+import { EarlyTerminate, HttpError, MessageException } from '../exception.js'
+import type { ServerMessage } from '../../client/types'
+import { CookieOptions } from 'express'
 
 export type Context = StaticContext | DynamicContext
 
 export type StaticContext = {
   type: 'static'
+  language: string
 }
 
 export type DynamicContext = ExpressContext | WsContext
@@ -35,6 +38,21 @@ export type RouterContext = {
 }
 
 export type RouterMatch = Omit<RouteContext<PageRoute>, 'value'>
+
+export function toExpressContext(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) {
+  let context: ExpressContext = {
+    type: 'express',
+    req,
+    res,
+    next,
+    url: req.url,
+  }
+  return context
+}
 
 export function getContextUrl(context: Context): string {
   if (context.type === 'static') {
@@ -86,13 +104,25 @@ export function getContextSearchParams(
   return new URLSearchParams(search)
 }
 
+export function getCookieLang(context: Context) {
+  return getContextCookies(context)?.unsignedCookies.lang
+}
+
+export function setCookieLang(
+  context: Context,
+  lang: string,
+  options?: CookieOptions,
+) {
+  setContextCookie(context, 'lang', lang, options)
+}
+
 export function getContextLanguage(context: Context): string | undefined {
-  let lang = getContextCookies(context)?.unsignedCookies.lang
+  let lang = getCookieLang(context)
   if (lang) {
-    return lang
+    return fixLanguage(lang)
   }
   if (context.type === 'static') {
-    return
+    return fixLanguage(context.language)
   }
   if (context.type === 'ws') {
     return fixLanguage(context.session.language)
@@ -106,7 +136,7 @@ export function getContextLanguage(context: Context): string | undefined {
   }
 }
 
-function fixLanguage(language: string | undefined): string | undefined {
+export function fixLanguage(language: string | undefined): string | undefined {
   if (!language || language === '*') {
     return
   }
@@ -116,5 +146,39 @@ function fixLanguage(language: string | undefined): string | undefined {
 export function getContextTimezone(context: Context): string | undefined {
   if (context.type === 'ws') {
     return context.session.timeZone
+  }
+}
+
+export function isAjax(context: Context): boolean {
+  if (context.type !== 'express') return false
+  let mode = context.req.header('Sec-Fetch-Mode')
+  return mode != null && mode !== 'navigate'
+}
+
+export function throwIfInAPI(
+  error: unknown,
+  selector: string,
+  context: Context,
+) {
+  let message: ServerMessage = [
+    'batch',
+    error instanceof MessageException
+      ? [
+          ['update-text', selector, ''],
+          ['remove-class', selector, 'error'],
+          error.message,
+        ]
+      : [
+          ['update-text', selector, String(error)],
+          ['add-class', selector, 'error'],
+        ],
+  ]
+  if (context.type == 'ws') {
+    context.ws.send(message)
+    throw EarlyTerminate
+  }
+  if (context.type == 'express' && isAjax(context)) {
+    context.res.json({ message })
+    throw EarlyTerminate
   }
 }

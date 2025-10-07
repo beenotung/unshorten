@@ -197,7 +197,7 @@ function removeParam(event) {
           )}
         />
       ) : null}
-      <Copyable.Container
+      <Copyable
         class="destination-container"
         text={decodeURI(url.href)}
       />

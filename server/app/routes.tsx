@@ -2,7 +2,9 @@ import { capitalize } from '@beenotung/tslib/string.js'
 import { Router } from 'url-router.ts'
 import { LayoutType, config, title } from '../config.js'
 import { Redirect } from './components/router.js'
-import type { Context, DynamicContext } from './context'
+import UILanguage from './components/ui-language.js'
+import type express from 'express'
+import type { DynamicContext, ExpressContext } from './context'
 import { o } from './jsx/jsx.js'
 import type { Node } from './jsx/types'
 import About, { License } from './pages/about.js'
@@ -11,11 +13,10 @@ import Home from './pages/home.js'
 import NotFoundPageRoute from './pages/not-found.js'
 import { then } from '@beenotung/tslib/result.js'
 import type { MenuRoute } from './components/menu'
-import DemoToast from './pages/demo-toast.js'
+import DemoPlugin from './pages/demo-plugin.js'
 import type { renderWebTemplate } from '../../template/web.js'
 import { VNode } from '../../client/jsx/types.js'
-import { EarlyTerminate, MessageException } from '../exception.js'
-import { renderError } from './components/error.js'
+import { evalAttrsLocale } from './components/locale.js'
 
 let titles: Record<string, string> = {}
 
@@ -66,6 +67,7 @@ export type Routes = Record<string, PageRoute>
 // TODO direct support alternative urls instead of having to repeat the entry
 let routeDict = {
   ...Home,
+  ...UILanguage.routes,
   '/about/:mode?': {
     title: title('About'),
     description:
@@ -77,12 +79,7 @@ let routeDict = {
     streaming: true,
   },
   // ...DemoToast.routes,
-  '/user-agents': {
-    title: title('User Agents of Visitors'),
-    description: "User agents of this site's visitors",
-    menuText: 'User Agents',
-    node: UserAgents,
-  },
+  ...UserAgents.routes,
   '/LICENSE': {
     title: 'BSD 2-Clause License of ts-liveview',
     description:
@@ -104,6 +101,7 @@ Object.entries(routeDict as Routes).forEach(([url, route]) => {
   pageRouter.add(url, { url, ...route })
   if (route.menuText) {
     menuRoutes.push({
+      ...route,
       url,
       menuText: route.menuText,
       menuUrl: route.menuUrl || url,
@@ -133,40 +131,35 @@ export function matchRoute(
   }
   context.routerMatch = match
   if ('resolve' in route) {
-    return then(route.resolve(context), res => Object.assign(route, res))
+    return then(route.resolve(context), res => {
+      let resolved = Object.assign(route, res)
+      evalAttrsLocale(resolved, 'title', context)
+      evalAttrsLocale(resolved, 'description', context)
+      return resolved
+    })
   }
+  evalAttrsLocale(route, 'title', context)
+  evalAttrsLocale(route, 'description', context)
   return route
 }
 
-export function getContextSearchParams(context: DynamicContext) {
-  return new URLSearchParams(
-    context.routerMatch?.search || context.url.split('?').pop(),
-  )
+export function resolveExpressContext(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) {
+  let context: ExpressContext = {
+    type: 'express',
+    req,
+    res,
+    next,
+    url: req.url,
+    routerMatch: pageRouter.route(req.url),
+  }
+  return context
 }
 
-export function errorRoute(
-  error: unknown,
-  context: Context,
-  title: string,
-  description: string,
-): StaticPageRoute {
-  if (error == EarlyTerminate || error instanceof MessageException) {
-    throw error
-  }
-  if (context.type == 'ws' && typeof error == 'string') {
-    throw new MessageException([
-      'eval',
-      // `showToast(${JSON.stringify(error)},'error')`,
-      `showAlert(${JSON.stringify(error)},'error')`,
-    ])
-  }
-  return {
-    title,
-    description,
-    node: renderError(error, context),
-  }
-}
-
+// TODO setup robots.txt
 if (config.setup_robots_txt) {
   setTimeout(() => {
     console.log(Object.keys(routeDict).join('\n'))

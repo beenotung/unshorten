@@ -2,6 +2,7 @@ import { o } from './jsx/jsx.js'
 import { scanTemplateDir } from '../template-file.js'
 import { NextFunction, Request, Response, Router } from 'express'
 import type { Context, ExpressContext, WsContext } from './context'
+import { fixLanguage } from './context.js'
 import type { Element } from './jsx/types'
 import {
   escapeHTMLAttributeValue,
@@ -158,7 +159,12 @@ function Footer(attrs: { style?: string }) {
         (attrs.style || '')
       }
     >
-      <PickLanguage style="text-align: end" />
+      <div style="margin-bottom: 0.75rem">
+        Made with 💝 by{' '}
+        <a target="_blank" href="https://github.com/beenotung">
+          Beeno
+        </a>
+      </div>
       <Stats />
     </footer>
   )
@@ -177,7 +183,7 @@ export function attachRoutes(app: Router) {
   app.use(handleLiveView)
 }
 
-function handleLiveView(req: Request, res: Response, next: NextFunction) {
+async function handleLiveView(req: Request, res: Response, next: NextFunction) {
   sendHTMLHeader(res)
 
   let context: ExpressContext = {
@@ -188,19 +194,39 @@ function handleLiveView(req: Request, res: Response, next: NextFunction) {
     url: req.url,
   }
 
-  then(matchRoute(context), route => {
-    if (route.status) {
-      res.status(route.status)
-    }
+  try {
+    await then(
+      matchRoute(context),
+      route => {
+        if (route.status) {
+          res.status(route.status)
+        }
 
-    route.description = route.description.replace(/"/g, "'")
+        route.description = route.description.replace(/"/g, "'")
 
-    if (route.streaming === false) {
-      responseHTML(res, context, route)
-    } else {
-      streamHTML(res, context, route)
+        if (route.streaming === false) {
+          responseHTML(res, context, route)
+        } else {
+          streamHTML(res, context, route)
+        }
+      },
+      onError,
+    )
+  } catch (error) {
+    onError(error)
+  }
+  function onError(error: unknown) {
+    if (error == EarlyTerminate) {
+      return
     }
-  })
+    if (error instanceof MessageException) {
+      res.json({ message: error.message })
+      return
+    }
+    res.status(500)
+    res.json({ error: String(error) })
+    console.error(error)
+  }
 }
 
 function responseHTML(
@@ -270,11 +296,11 @@ export let onWsMessage: OnWsMessage = async (event, ws, _wss) => {
   let session = getWSSession(ws)
   let navigation_type: WindowStub['_navigation_type_']
   let navigation_method: WindowStub['_navigation_method_']
-  if (event[0] === 'mount') {
+  if (event[0] === 'mount' || event[0] === 'remount') {
     event = event as ClientMountMessage
-    eventType = 'mount'
+    eventType = event[0]
     url = event[1]
-    session.language = event[2]
+    session.language = fixLanguage(event[2])
     let timeZone = event[3]
     if (timeZone && timeZone !== 'null') {
       session.timeZone = timeZone
@@ -318,6 +344,13 @@ export let onWsMessage: OnWsMessage = async (event, ws, _wss) => {
     await then(
       matchRoute(context),
       route => {
+        if (eventType === 'mount') {
+          if (config.production) {
+            // in production mode, skip hot reload when the server is restarted
+            // so the client state will not be reset in the middle of form filling
+            return
+          }
+        }
         let App = layouts[route.layout_type || config.layout_type]
         let node = App(route)
         if (navigation_type === 'express' && navigation_method !== 'GET') return

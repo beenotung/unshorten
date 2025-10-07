@@ -4,6 +4,7 @@ import type { Node, NodeList } from '../jsx/types'
 import { Router as UrlRouter } from 'url-router.ts'
 import { EarlyTerminate } from '../../exception.js'
 import { setSessionUrl } from '../session.js'
+import { evalAttrsLocale } from './locale.js'
 
 export type LinkAttrs = {
   'tagName'?: string
@@ -14,15 +15,19 @@ export type LinkAttrs = {
   'onclick'?: never
   [name: string]: unknown
   'children'?: NodeList
+  'hidden'?: boolean | undefined
+  'rel'?: 'nofollow'
 }
 
-export function Link(attrs: LinkAttrs) {
+export function Link(attrs: LinkAttrs, context: Context) {
+  evalAttrsLocale(attrs, 'title', context)
   const {
     'tagName': _tagName,
     'no-history': quiet,
     'no-animation': fast,
     'is-back': back,
     children,
+    hidden,
     ...aAttrs
   } = attrs
   const tagName = _tagName || 'a'
@@ -35,7 +40,11 @@ export function Link(attrs: LinkAttrs) {
     console.warn('Link attrs:', attrs)
     console.warn(new Error('Link with empty content'))
   }
-  return [tagName, { onclick, ...aAttrs }, children]
+  return [
+    tagName,
+    { onclick, hidden: hidden ? '' : undefined, ...aAttrs },
+    children,
+  ]
 }
 
 export function Redirect(
@@ -46,7 +55,7 @@ export function Redirect(
   if (context.type === 'express') {
     const res = context.res
     if (res.headersSent) {
-      res.send(renderRedirect(href))
+      res.end(renderRedirect(href))
     } else {
       const status = attrs.status || 303
       res.redirect(status, href)

@@ -10,6 +10,8 @@ import {
   setValue,
   insertNodeBefore,
   redirect,
+  addClass,
+  removeClass,
 } from './jsx/dom.js'
 import { connectWS } from './ws/ws-lite.js'
 import type { LinkFlag, WindowStub } from './internal'
@@ -33,6 +35,11 @@ connectWS({
     function emit(...args: unknown[]): void
     function emit(): void {
       ws.send(Array.from(arguments) as ClientMessage)
+    }
+
+    function goto(url: string): void {
+      history.pushState(null, document.title, url)
+      emit(url)
     }
 
     function emitHref(event: MouseEvent, flag?: LinkFlag) {
@@ -67,6 +74,17 @@ connectWS({
 
     function submitForm(form: HTMLFormElement) {
       let formData = new FormData(form)
+      if (form.dataset.trimEmpty) {
+        let keys: string[] = []
+        formData.forEach((value, key) => {
+          if (value == '') {
+            keys.push(key)
+          }
+        })
+        for (let key of keys) {
+          formData.delete(key)
+        }
+      }
       if (form.method === 'get') {
         let url = new URL(form.action || location.href)
         url.search = new URLSearchParams(formData as {}).toString()
@@ -98,23 +116,28 @@ connectWS({
     }
 
     win.emit = emit
+    win.goto = goto
     win.emitHref = emitHref
     win.emitForm = emitForm
     win.submitForm = submitForm
-    win.remount = mount
+    win.remount = () => mount('remount')
 
-    ws.ws.addEventListener('open', mount)
+    ws.ws.addEventListener('open', () => mount('mount'))
 
-    function mount() {
-      let language =
-        navigator && navigator.language ? navigator.language : undefined
+    function mount(type: 'mount' | 'remount' = 'mount') {
+      let language = Object.fromEntries(
+        document.cookie.split(';').map(s => s.trim().split('=')),
+      ).lang
+      if (!language && navigator) {
+        language = navigator.language
+      }
       let url = location.href.replace(origin, '')
       let timeZone = Intl
         ? Intl.DateTimeFormat().resolvedOptions().timeZone
         : undefined
       let timezoneOffset = new Date().getTimezoneOffset()
       let message: ClientMessage = [
-        'mount',
+        type,
         url,
         language,
         timeZone,
@@ -183,6 +206,12 @@ function onServerMessage(message: ServerMessage) {
     case 'set-value':
       setValue(message[1], message[2])
       break
+    case 'add-class':
+      addClass(message[1], message[2])
+      break
+    case 'remove-class':
+      removeClass(message[1], message[2])
+      break
     case 'batch':
       message[1].forEach(onServerMessage)
       break
@@ -198,8 +227,10 @@ function onServerMessage(message: ServerMessage) {
     case 'eval':
       eval(message[1])
       break
-    default:
-      console.error('unknown server message:', message)
+    default: {
+      let rest: never = message
+      console.error('unknown server message:', rest)
+    }
   }
 }
 win.onServerMessage = onServerMessage
@@ -229,3 +260,34 @@ function upload(url: string, formData: FormData) {
   })
 }
 win.upload = upload
+
+win.fetch_json = (input, init) => {
+  return fetch(input, init)
+    .then(res =>
+      res.json().catch(() => ({
+        error: res.statusText || `Status Code: ${res.status}`,
+      })),
+    )
+    .catch(error => ({ error: String(error) }))
+    .then(json => {
+      if (json.error) {
+        showError(json.error)
+      }
+      if (json.message) {
+        onServerMessage(json.message)
+      }
+      return json
+    })
+}
+
+// in sweetalert client plugin
+declare function showAlert(title: string, icon: string): void
+
+function showError(error: unknown) {
+  if (typeof showAlert === 'function') {
+    showAlert(String(error), 'error')
+  } else {
+    alert(String(error))
+  }
+}
+win.showError = showError
