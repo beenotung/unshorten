@@ -201,10 +201,7 @@ function removeParam(event) {
           )}
         />
       ) : null}
-      <Copyable
-        class="destination-container"
-        text={decodeURI(url.href)}
-      />
+      <Copyable class="destination-container" text={decodeURI(url.href)} />
       <hr />
       <h2>Technical Details</h2>
       <Field
