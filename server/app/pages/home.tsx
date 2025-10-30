@@ -18,7 +18,11 @@ import { new_counter } from '@beenotung/tslib/counter.js'
 import { mapArray } from '../components/fragment.js'
 import { Script } from '../components/script.js'
 import { Copyable } from '../components/copyable.js'
-import { linkMiddleware, responseMiddleware } from '../extensions/index.js'
+import {
+  linkMiddleware,
+  responseMiddleware,
+  shouldSkipFetch,
+} from '../extensions/index.js'
 import { removeXhsTrackingParams } from '../extensions/xhslink.com.js'
 
 let style = Style(/* css */ `
@@ -277,6 +281,39 @@ async function resolveReveal(
       ),
     }
   }
+
+  // Skip fetching for URLs that block server requests
+  try {
+    let url = new URL(link)
+    if (shouldSkipFetch(url)) {
+      // Create a mock response for URLs that we've already processed
+      let mockRes = new Response(null, {
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers({
+          'content-length': '0',
+          'content-type': 'text/html',
+        }),
+      })
+      // Override the URL to the processed link
+      Object.defineProperty(mockRes, 'url', { value: link, writable: false })
+
+      return {
+        title: 'Reveal ' + safeLink,
+        description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
+        node: <Reveal link={link!} res={mockRes} />,
+      }
+    }
+  } catch (error) {
+    // If URL parsing fails, continue with normal fetch
+    return {
+      title: defaultTitle,
+      description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
+      node: renderError(`Failed to parse link from ${safeLink}`, context),
+      status: 500,
+    }
+  }
+
   return fetch(link)
     .then(res => responseMiddleware(res))
     .then(res => {

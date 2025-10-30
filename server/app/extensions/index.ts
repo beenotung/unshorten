@@ -32,5 +32,17 @@ export function addLinkMiddleware(middleware: LinkMiddleware) {
   })
 }
 
+let skipHostnames: string[] = [
+  // URLs that should skip fetching because they block server requests
+  'www.youtube.com',
+  'youtube.com',
+  'youtu.be',
+]
+
+export function shouldSkipFetch(url: URL): boolean {
+  return skipHostnames.includes(url.hostname)
+}
+
 import './reurl.cc.js'
 import './xhslink.com.js'
+import './yt.js'
