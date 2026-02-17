@@ -88,7 +88,7 @@ function Form(attrs: { link?: string }) {
           type="button"
           value="Clear"
           id="clear_button"
-          onclick="link_input.value=''; link_input.focus()"
+          onclick="submit_button.disabled=true; link_input.value=''; link_input.focus()"
         />
       </div>
       <div style="margin-top: 0.5rem">
