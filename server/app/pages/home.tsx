@@ -221,6 +221,7 @@ function removeParam(event) {
       ) : null}
       <Field label="Resolved Destination Link" value={decodeURI(url.href)} />
       <SourceCode page="home.tsx" />
+      {script}
     </div>
   )
 }
