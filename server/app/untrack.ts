@@ -1,14 +1,24 @@
+// reference: https://en.wikipedia.org/wiki/UTM_parameters
+// reference: https://www.karooya.com/blog/list-of-all-valuetrack-parameters-in-google-adwords/
 export let trackingParamKeys = [
-  // reference: https://en.wikipedia.org/wiki/UTM_parameters
   'utm_id',
   'utm_source',
   'utm_medium',
   'utm_campaign',
   'utm_term',
   'utm_content',
-  // reference: https://www.karooya.com/blog/list-of-all-valuetrack-parameters-in-google-adwords/
+  'utm_source_res',
+  'utm_device',
+  'utm_creative',
+  'utm_creative_res',
+  'utm_adset',
+  'utm_ad',
+  // Google Ads / PerfMax
   'gad',
+  'gad_source',
+  'gad_campaignid',
   'gclid',
+  // ad/campaign naming (Google Ads, Meta, etc.)
   // facebook tracking parameters
   'fbclid',
   // Taboola (advertising platform)
