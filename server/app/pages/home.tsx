@@ -172,10 +172,10 @@ function removeParam(event) {
   params.delete(key)
   url.search = params
   code.textContent = decodeURI(url)
+  destination_link.href = decodeURI(url)
   tr.remove()
   params = new URLSearchParams({ link: url.href })
   url = location.pathname + '?' + params
-  destination_link.href = decodeURI(url)
   history.pushState({}, "", url)
 }
 `)}
