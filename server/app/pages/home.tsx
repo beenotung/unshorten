@@ -4,7 +4,7 @@ import { prerender } from '../jsx/html.js'
 import SourceCode from '../components/source-code.js'
 import { ResolvedPageRoute, Routes, StaticPageRoute } from '../routes.js'
 import { config, title } from '../../config.js'
-import { DynamicContext } from '../context.js'
+import { Context, DynamicContext } from '../context.js'
 import { renderError } from '../components/error.js'
 import sanitize from 'sanitize-html'
 import {
@@ -98,9 +98,15 @@ function Form(attrs: { link?: string }) {
   )
 }
 
-function Reveal(attrs: { link: string; res: Response }) {
+function Reveal(
+  attrs: { link: string; res: Response | null; error?: unknown },
+  context: Context,
+) {
   let { link, res } = attrs
-  let url = new URL(res.url)
+  let url = new URL(res ? res.url : link)
+  if (res?.url.startsWith('http:') && link.startsWith('https://')) {
+    url = new URL(res.url.replace('http://', 'https://'))
+  }
   if (url.href.startsWith('https://r.lihkg.com/link')) {
     let u = url.searchParams.get('u')
     if (u) url = new URL(u)
@@ -116,14 +122,15 @@ function Reveal(attrs: { link: string; res: Response }) {
   let removedTrackingParamEntries = Object.entries(removedTrackingParams)
   let urlSearchParamEntries = Array.from(url.searchParams.entries())
   let short_url = url.href.replace(url.search, '').replace(/\/$/, '')
-  let size = +res.headers.get('content-length')!
-  let server = res.headers.get('server')
-  let poweredBy = res.headers.get('x-powered-by')
+  let size = +res?.headers.get('content-length')!
+  let server = res?.headers.get('server')
+  let poweredBy = res?.headers.get('x-powered-by')
   return (
     <div id="reveal-page">
       <h1>Reveal Shorten URL</h1>
       {style}
       <Form link={link} />
+      {attrs.error ? <p class="error">{String(attrs.error)}</p> : null}
       <Field
         label="Destination Link"
         value={
@@ -206,17 +213,17 @@ function removeParam(event) {
       <h2>Technical Details</h2>
       <Field
         label="Response Status"
-        value={`${res.status} (${res.statusText})`}
+        value={res ? `${res.status} (${res.statusText})` : 'Failed to fetch'}
       />
       <Field
         label="Media Type"
-        value={res.headers.get('content-type') || 'Unknown'}
+        value={res?.headers.get('content-type') || 'Unknown'}
       />
       {size ? <Field label="Content Size" value={formatSize(size)} /> : null}
       {server ? <Field label="Server" value={server} /> : null}
       {poweredBy ? <Field label="Powered by" value={poweredBy} /> : null}
       <Field label="Source Link" value={link} />
-      {res.url != url.href && res.url != link ? (
+      {res && res.url != url.href && res.url != link ? (
         <Field label="Original Destination Link" value={decodeURI(res.url)} />
       ) : null}
       <Field label="Resolved Destination Link" value={decodeURI(url.href)} />
@@ -248,7 +255,6 @@ async function resolveReveal(
   let link = context.routerMatch?.search
     ? new URLSearchParams(context.routerMatch?.search).get('link')
     : null
-  let safeLink = link ? sanitize(link) : null
   let defaultTitle = 'Reveal Shorten URL'
   if (!link) {
     return {
@@ -260,6 +266,7 @@ async function resolveReveal(
   try {
     link = await linkMiddleware(link)
   } catch (error) {
+    let safeLink = link ? sanitize(link) : null
     return {
       title: defaultTitle,
       description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
@@ -269,6 +276,7 @@ async function resolveReveal(
   if (!link.includes('://')) {
     link = 'https://' + link
   }
+  let safeLink = link ? sanitize(link) : null
   if (!link.startsWith('http://') && !link.startsWith('https://')) {
     return {
       title: defaultTitle,
@@ -314,6 +322,14 @@ async function resolveReveal(
 
   return fetch(link)
     .then(res => responseMiddleware(res))
+    .catch(err => {
+      if (link.startsWith('https://')) {
+        return fetch(link.replace('https://', 'http://')).then(res =>
+          responseMiddleware(res),
+        )
+      }
+      throw err
+    })
     .then(res => {
       return {
         title: 'Reveal ' + safeLink,
@@ -325,9 +341,10 @@ async function resolveReveal(
       return {
         title: defaultTitle,
         description: `Reveal the destination of ${safeLink} and remove tracking parameters`,
-        node: renderError(
-          `Failed to resolve destination of ${safeLink}`,
-          context,
+        node: (
+          <>
+            <Reveal link={link!} res={null} error={err} />,
+          </>
         ),
       }
     })
