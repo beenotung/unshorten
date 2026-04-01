@@ -17,7 +17,7 @@ addLinkMiddleware(link => {
     link.indexOf(' ', start),
     link.indexOf('\n', start),
   )
-  if (end == -1) return link
+  if (end == -1) return link.slice(start)
 
   return link.slice(start, end)
 })
