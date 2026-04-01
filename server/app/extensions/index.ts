@@ -43,6 +43,7 @@ export function shouldSkipFetch(url: URL): boolean {
   return skipHostnames.includes(url.hostname)
 }
 
+import './trim.js'
 import './reurl.cc.js'
 import './xhslink.com.js'
 import './yt.js'
