@@ -60,6 +60,11 @@ function toggle_buttons() {
   submit_button.disabled = is_empty
 }
 toggle_buttons()
+submit_button.onclick = function() {
+  submit_button.value = 'Revealing...'
+  submit_button.disabled = true
+  setTimeout(() => submit_button.form.submit())
+}
 `)
 
 let home = prerender(
